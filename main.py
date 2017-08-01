@@ -8,8 +8,5 @@ if __name__ == "__main__":
     if err:
         raise(Exception(err))
     ti.instance.set_input_mode(ti.instance.input("Esc"))
-    ti._draw_query()
-    ti._draw_prompt()
-    ti.instance.flush()
-    time.sleep(2)
+    ti.ask()
     ti.instance.close()
