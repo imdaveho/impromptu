@@ -15,11 +15,6 @@ class TextInput(Question):
         self._cursor_offset = 0
         self._cursor_unicode_offset = 0
 
-    def _render_text(self, x, y, fg, bg, msg):
-        for c in msg:
-            self.instance.set_cell(x, y, c, fg, bg)
-            x += self.instance.rune_width(c)
-
     def _rune_advance(self, r, pos):
         if r == '\t':
             return self.TABSTOP - (pos % self.TABSTOP)
@@ -90,6 +85,24 @@ class TextInput(Question):
     def _cursorX(self):
         return self._cursor_offset - self._visual_offset
 
+    def _adjust_voffset(self, width):
+        ht = self.PADDING
+        max_h_threshold = int((width-1)/2)
+        if ht > max_h_threshold:
+            ht = max_h_threshold
+
+        threshold = width - 1
+        if self._visual_offset != 0:
+            threshold = width - ht
+
+        if (self._cursor_offset - self._visual_offset) >= threshold:
+            self._visual_offset = self._cursor_offset + (ht - width + 1)
+
+        if self._visual_offset != 0 and (self._cursor_offset - self._visual_offset) < ht:
+            self._visual_offset = self._cursor_offset - ht
+            if self._visual_offset < 0:
+                self._visual_offset = 0
+
     def _draw_query(self, colors=None):
         x = 0
         y = self.line
@@ -122,12 +135,13 @@ class TextInput(Question):
             x += 1
         return None
 
-    def _draw_widget(self, x, y):
-        coldef = self.instance.color("Default")
+    def _draw_widget(self):
         w, h = self.WIDTH, 1
+        self._adjust_voffset(w)
         t = self.text
-        lx = len(self.template['prompt'])
-        tabstop = lx
+        lx, tabstop = 0, 0
+        coldef = self.instance.color("Default")
+        x, y = len(self.template['prompt']), self.line + 1
         while True:
             rx = lx - self._visual_offset
             if len(t) == 0:
@@ -156,23 +170,26 @@ class TextInput(Question):
         if self._visual_offset != 0:
             self.instance.set_cell(x, y, '←', coldef, coldef)
 
-    def _display(self):
-        x, y = len(self.template['prompt']), self.line + 1
+    def _clear_all(self):
+        coldef = self.instance.color("Default")
+        self.instance.clear(coldef, coldef)
+
+    def _redraw_all(self):
+        self._clear_all()
         self._draw_query()
         self._draw_prompt()
-        self._draw_widget(x, y)
+        self._draw_widget()
+        x, y = len(self.template['prompt']), self.line + 1
         self.instance.set_cursor(x+self._cursorX(), y)
         self.instance.flush()
 
     def _run(self):
-        coldef = self.instance.color("Default")
-        self.instance.clear(coldef, coldef)
         # check minimum width and height
         w, h = self.instance.size()
         # do the check here:
 
         # draw the query and prompt
-        self._display()
+        self._redraw_all()
         # start the widget
         while True:
             evt = self.instance.poll_event()
@@ -205,6 +222,6 @@ class TextInput(Question):
             elif evt["Type"] == self.instance.event("Error"):
                 # EventError
                 raise(Exception(evt["Err"]))
-            self._display()
+            self._redraw_all()
         # set the correct height now???
         self.line = self.height
