@@ -38,9 +38,13 @@ class Question(object):
     def _run(self):
         pass
 
+    def set_line(self, linenum):
+        self.line = linenum
+        return None
+
     def ask(self):
         self._display()
         self._run()
         return None
 
-from ._inputs import TextInput
+from ._inputs import TextInput, PasswordInput

@@ -223,5 +223,41 @@ class TextInput(Question):
                 # EventError
                 raise(Exception(evt["Err"]))
             self._redraw_all()
-        # set the correct height now???
-        self.line = self.height
+        self.result = self.text
+
+
+class PasswordInput(TextInput):
+    def _draw_widget(self):
+        w, h = self.WIDTH, 1
+        self._adjust_voffset(w)
+        t = self.text
+        lx, tabstop = 0, 0
+        coldef = self.instance.color("Default")
+        x, y = len(self.template['prompt']), self.line + 1
+        while True:
+            rx = lx - self._visual_offset
+            if len(t) == 0:
+                break
+            if lx == tabstop:
+                tabstop += self.TABSTOP
+            if rx >= w:
+                self.instance.set_cell(x+w-1, y, '→', coldef, coldef)
+                break
+            rune = "*"
+            if rune == '\t':
+                while lx < tabstop:
+                    rx = lx - self._visual_offset
+                    if rx >= w:
+                        break
+                    if rx >= 0:
+                        self.instance.set_cell(x+rx, y, ' ', coldef, coldef)
+                    lx += 1
+            else:
+                if rx >= 0:
+                    self.instance.set_cell(x+rx, y, rune, coldef, coldef)
+                lx += self.instance.rune_width(rune)
+            # next:
+            t = t[len(rune):]
+
+        if self._visual_offset != 0:
+            self.instance.set_cell(x, y, '←', coldef, coldef)
