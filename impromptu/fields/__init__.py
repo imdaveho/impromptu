@@ -1,5 +1,44 @@
-import platform
+from platform import system
 from intermezzo import Intermezzo as mzo
+
+
+class Impromptu(object):
+    def __init__(self):
+        self._toggle_on = (
+            '►' if system() == "Windows"
+            else '◉', mzo.color("Cyan")
+        )
+        self._toggle_off = ('○', mzo.color("Cyan"))
+        self._query_icon = ("[?]", (0, mzo.color("Green"), 0))
+        self._text_icon = ("»", mzo.color("Red"))
+        self._list_icon = ('›', mzo.color("Cyan"))
+        self.active_index = 0
+        self.query_list = []
+
+    def add(self, name, query, widget, theme=None):
+        self.query_list.append(locals())
+
+    def _init(self):
+        pass
+    def _prompt(self):
+        pass
+    def _loop(self):
+        pass
+
+    def ask(self):
+        # initialize
+        err = mzo.init()
+        if err:
+            raise(Exception(err))
+        mzo.set_input_mode(mzo.input("Esc"))
+        # draw loop
+        for i, q in enumerate(self.query_list):
+            x, y = 0, self.active_index
+            widget = q["widget"]
+            
+        # end loop and close
+        mzo.close()
+
 
 
 class Question(object):
