@@ -1,19 +1,19 @@
 from . import Question
-from intermezzo import Intermezzo as mzo
 
 
-class TextInput(Question):
-    def __init__(self, name, query, config=None):
-        super().__init__(name, query, config)
+class BaseInput(Question):
+    """
+    Base class that includes keyboard input helper functions.
+    """
+    def __init__(self, name, query):
+        super().__init__(name, query)
         self.TABSTOP = 8
         self.PADDING = 5
-        self.WIDTH = 30
-        self.widget = "text"
-        self.height = 2
-        self.text = ""
+        self.WIDTH = 60
         self._visual_offset = 0
         self._cursor_offset = 0
         self._cursor_unicode_offset = 0
+        self._text = ""
 
     def _rune_advance(self, r, pos):
         if r == '\t':
@@ -29,7 +29,7 @@ class TextInput(Question):
         return text
 
     def _move_to(self, coffset):
-        text = self.text[:coffset]
+        text = self._text[:coffset]
         voffset = 0
         while len(text) > 0:
             rune = text[0]
@@ -39,10 +39,10 @@ class TextInput(Question):
         self._cursor_unicode_offset = coffset
 
     def _under_cursor(self):
-        return self.text[self._cursor_unicode_offset]
+        return self._text[self._cursor_unicode_offset]
 
     def _before_cursor(self):
-        return self.text[self._cursor_unicode_offset - 1]
+        return self._text[self._cursor_unicode_offset - 1]
 
     def _move_one_backward(self):
         if self._cursor_unicode_offset == 0:
@@ -51,7 +51,7 @@ class TextInput(Question):
         self._move_to(self._cursor_unicode_offset - size)
 
     def _move_one_forward(self):
-        if self._cursor_unicode_offset == len(self.text):
+        if self._cursor_unicode_offset == len(self._text):
             return
         size = len(self._under_cursor())
         self._move_to(self._cursor_unicode_offset + size)
@@ -60,26 +60,26 @@ class TextInput(Question):
         self._move_to(0)
 
     def _move_to_end(self):
-        self._move_to(len(self.text))
+        self._move_to(len(self._text))
 
     def _delete_backward(self):
         if self._cursor_unicode_offset == 0:
             return
         self._move_one_backward()
         size = len(self._under_cursor())
-        self.text = self._remove(self.text, self._cursor_unicode_offset, self._cursor_unicode_offset + size)
+        self._text = self._remove(self._text, self._cursor_unicode_offset, self._cursor_unicode_offset + size)
 
     def _delete_forward(self):
-        if self._cursor_unicode_offset == len(self.text):
+        if self._cursor_unicode_offset == len(self._text):
             return
         size = len(self._under_cursor())
-        self.text = self._remove(self.text, self._cursor_unicode_offset, self._cursor_unicode_offset + size)
+        self._text = self._remove(self._text, self._cursor_unicode_offset, self._cursor_unicode_offset + size)
 
     def _delete_to_end(self):
-        self.text = self.text[:self._cursor_unicode_offset]
+        self._text = self._text[:self._cursor_unicode_offset]
 
     def _insert_rune(self, rune):
-        self.text = self._insert(self.text, self._cursor_unicode_offset, rune)
+        self._text = self._insert(self._text, self._cursor_unicode_offset, rune)
         self._move_one_forward()
 
     def _cursorX(self):
@@ -103,34 +103,37 @@ class TextInput(Question):
             if self._visual_offset < 0:
                 self._visual_offset = 0
 
-    def _draw_query(self, colors=None):
-        x = 0
-        y = self.line
-        query = self.template["query"] + ' ' + self.query
+
+class TextInput(BaseInput):
+    def __init__(self, name, query, settings=None):
+        super().__init__(name, query)
+        self.QUERY_ICON = ("[?]", (0, self.instance.color("Green"), 0))
+        self.INPUT_ICON = ("»", (self.instance.color("Red"),))
+        self._prompt = self._config(settings)
+        self.widget = "text"
+        self.height = 2
+
+    def _config(self, s):
         coldef = self.instance.color("Default")
-        if colors:
-            query_colors = colors
-        else:
-            query_colors = [coldef for _ in query]
-            query_colors[query.find('?')] = self.instance.color("Green")
-        for i, ch in enumerate(query):
-            color = query_colors[i]
+        query_icon   = s["query_icon"]  if s.get("query_icon") else self.QUERY_ICON
+        query_color  = s["query_color"] if s.get("query_color") else tuple(coldef for _ in self.query)
+        input_icon   = s["input_icon"]  if s.get("input_icon") else self.INPUT_ICON
+        return {
+            "query": (query_icon[0] + ' ' + self.query,
+                      query_icon[1] + (coldef,) + query_color),
+            "input": (f" {input_icon[0]} ", (coldef,) + input_icon[1] + (coldef,))
+        }
+
+    def _draw_prompt(self):
+        x, y = 0, self.line
+        prompt = self._prompt
+        q, i = prompt["query"], prompt["input"]
+        coldef = self.instance.color("Default")
+        for ch, color in zip(q[0], q[1]):
             self.instance.set_cell(x, y, ch, color, coldef)
             x += 1
-        return None
-
-    def _draw_prompt(self, colors=None):
-        x = 0
-        y = self.line + 1
-        prompt = self.template["prompt"]
-        coldef = self.instance.color("Default")
-        if colors:
-            prompt_colors = colors
-        else:
-            prompt_colors = [coldef for _ in prompt]
-            prompt_colors[prompt.find('»')] = self.instance.color("Red")
-        for i, ch in enumerate(prompt):
-            color = prompt_colors[i]
+        x, y = 0, self.line + 1
+        for ch, color in zip(i[0], i[1]):
             self.instance.set_cell(x, y, ch, color, coldef)
             x += 1
         return None
@@ -138,10 +141,10 @@ class TextInput(Question):
     def _draw_widget(self):
         w, h = self.WIDTH, 1
         self._adjust_voffset(w)
-        t = self.text
+        t = self._text
         lx, tabstop = 0, 0
         coldef = self.instance.color("Default")
-        x, y = len(self.template['prompt']), self.line + 1
+        x, y = len(self._prompt["input"]) + 1, self.line + 1
         while True:
             rx = lx - self._visual_offset
             if len(t) == 0:
@@ -176,17 +179,16 @@ class TextInput(Question):
 
     def _redraw_all(self):
         self._clear_all()
-        self._draw_query()
         self._draw_prompt()
         self._draw_widget()
-        x, y = len(self.template['prompt']), self.line + 1
+        x, y = len(self._prompt["input"]) + 1, self.line + 1
         self.instance.set_cursor(x+self._cursorX(), y)
         self.instance.flush()
 
     def _run(self):
         # check minimum width and height
         w, h = self.instance.size()
-        # do the check here:
+        # do the check here: TODO
 
         # draw the query and prompt
         self._redraw_all()
@@ -223,17 +225,17 @@ class TextInput(Question):
                 # EventError
                 raise(Exception(evt["Err"]))
             self._redraw_all()
-        self.result = self.text
+        self.result = self._text
 
 
 class PasswordInput(TextInput):
     def _draw_widget(self):
         w, h = self.WIDTH, 1
         self._adjust_voffset(w)
-        t = self.text
+        t = self._text
         lx, tabstop = 0, 0
         coldef = self.instance.color("Default")
-        x, y = len(self.template['prompt']), self.line + 1
+        x, y = len(self._prompt["input"]) + 1, self.line + 1
         while True:
             rx = lx - self._visual_offset
             if len(t) == 0:
