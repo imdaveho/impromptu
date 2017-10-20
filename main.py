@@ -3,7 +3,11 @@ from impromptu.fields import *
 
 if __name__ == "__main__":
     instance = Impromptu()
-    q1 = PasswordInput(name="name", query="What is your name?", settings={"query_icon":("[?]", (0, mzo.color("Blue"), 0))})
+    # q1 = TextInput(name="name", query="What is your name?", settings={"query_icon":("[?]", (0, mzo.color("Blue"), 0))})
+    q1 = ChoiceSelect(name="favorite", query="What is your favorite food?",
+                      choices=["Pizza", "Burgers", "Sushi", "BBQ",
+                               "Pancakes", "Salad", "Ice Cream",
+                               "Yogurt", "Bagels", "Fish"])
     instance.add(q1)
     instance.ask()
 

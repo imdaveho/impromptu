@@ -111,17 +111,17 @@ class TextInput(BaseInput):
         self.INPUT_ICON = ("»", (self.instance.color("Red"),))
         self._prompt = self._config(settings)
         self.widget = "text"
-        self.height = 2
 
     def _config(self, s):
         coldef = self.instance.color("Default")
+        s = {} if s is None else s
         query_icon   = s["query_icon"]  if s.get("query_icon") else self.QUERY_ICON
         query_color  = s["query_color"] if s.get("query_color") else tuple(coldef for _ in self.query)
         input_icon   = s["input_icon"]  if s.get("input_icon") else self.INPUT_ICON
         return {
             "query": (query_icon[0] + ' ' + self.query,
                       query_icon[1] + (coldef,) + query_color),
-            "input": (f" {input_icon[0]} ", (coldef,) + input_icon[1] + (coldef,))
+            "input": (f" {input_icon[0]}  ", (coldef,) + input_icon[1] + (coldef, coldef))
         }
 
     def _draw_prompt(self):
@@ -144,7 +144,7 @@ class TextInput(BaseInput):
         t = self._text
         lx, tabstop = 0, 0
         coldef = self.instance.color("Default")
-        x, y = len(self._prompt["input"]) + 1, self.line + 1
+        x, y = len(self._prompt["input"]) + 2, self.line + 1
         while True:
             rx = lx - self._visual_offset
             if len(t) == 0:
@@ -181,13 +181,13 @@ class TextInput(BaseInput):
         self._clear_all()
         self._draw_prompt()
         self._draw_widget()
-        x, y = len(self._prompt["input"]) + 1, self.line + 1
+        x, y = len(self._prompt["input"]) + 2, self.line + 1
         self.instance.set_cursor(x+self._cursorX(), y)
         self.instance.flush()
 
     def _run(self):
         # check minimum width and height
-        w, h = self.instance.size()
+        # w, h = self.instance.size()
         # do the check here: TODO
 
         # draw the query and prompt
@@ -235,7 +235,7 @@ class PasswordInput(TextInput):
         t = self._text
         lx, tabstop = 0, 0
         coldef = self.instance.color("Default")
-        x, y = len(self._prompt["input"]) + 1, self.line + 1
+        x, y = len(self._prompt["input"]) + 2, self.line + 1
         while True:
             rx = lx - self._visual_offset
             if len(t) == 0:

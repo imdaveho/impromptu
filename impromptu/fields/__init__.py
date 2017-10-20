@@ -1,4 +1,3 @@
-from platform import system
 from intermezzo import Intermezzo as mzo
 
 
@@ -43,6 +42,7 @@ class Question(object):
         self.result = ""
         self.name = name
         self.query = query
+        self.height = 2
 
     def _display(self):
         pass
@@ -60,3 +60,4 @@ class Question(object):
         return None
 
 from ._inputs import TextInput, PasswordInput
+from ._choices import ChoiceSelect
