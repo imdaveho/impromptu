@@ -3,8 +3,19 @@ from impromptu.fields import *
 
 if __name__ == "__main__":
     instance = Impromptu()
-    q1 = TextInput(name="name", query="What is your name?", symbols={"icon":("[?]", (0, mzo.color("Blue"), 0))})
-    q2 = ChoiceSelect(name="favorite", query="What is your favorite food?",
+    sym = {
+        "icon": "[?]",
+    }
+    col = {
+        "icon": (0, mzo.color("Blue"), 0),
+    }
+
+    q1 = TextInput(name="name", query="What is your name?", symbols=sym, colors=col)
+    # q2 = ChoiceSelect(name="favorite", query="What is your favorite food?",
+    #                   choices=["Pizza", "Burgers", "Sushi", "BBQ",
+    #                            "Pancakes", "Salad", "Ice Cream",
+    #                            "Yogurt", "Bagels", "Fish"])
+    q2 = MultiSelect(name="favorite", query="What is your favorite food?",
                       choices=["Pizza", "Burgers", "Sushi", "BBQ",
                                "Pancakes", "Salad", "Ice Cream",
                                "Yogurt", "Bagels", "Fish"])

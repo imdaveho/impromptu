@@ -108,24 +108,25 @@ class TextInput(BaseInput):
     def __init__(self, name, query, **settings):
         super().__init__(name, query, **settings)
         self.widget = "text"
-        self.cursor = ("»", (self.instance.color("Red"),))
+        self.prompt = "»"
 
-    def _draw_cursor(self):
+    def _draw_prompt(self):
         x, y = 0, self.line + 1
-        c = self.symbols.get("cursor") or self.cursor
-        cursor = (f" {c[0]}  ", (self.clr,) + c[1] + (self.clr, self.clr))
-        for ch, color in zip(cursor[0], cursor[1]):
-            self.instance.set_cell(x, y, ch, color, self.clr)
+        p = self.symbols.get("prompt") or self.prompt
+        pc = self.colors.get("prompt") or self.instance.color("Red")
+        prompt = (f" {p}  ", (self.fgcol, pc, self.fgcol, self.fgcol))
+        for ch, color in zip(prompt[0], prompt[1]):
+            self.instance.set_cell(x, y, ch, color, self.bgcol)
             x += 1
-        return cursor
+        return prompt
 
     def _draw_widget(self):
-        cursor = self._draw_cursor()
+        prompt = self._draw_prompt()
         w, h = self.WIDTH, 1
         self._adjust_voffset(w)
         t = self._text
         lx, tabstop = 0, 0
-        x, y = len(cursor[0]), self.line + 1
+        x, y = len(prompt[0]), self.line + 1
         while True:
             rx = lx - self._visual_offset
             if len(t) == 0:
@@ -133,7 +134,7 @@ class TextInput(BaseInput):
             if lx == tabstop:
                 tabstop += self.TABSTOP
             if rx >= w:
-                self.instance.set_cell(x+w-1, y, '→', self.clr, self.clr)
+                self.instance.set_cell(x+w-1, y, '→', self.fgcol, self.bgcol)
                 break
             rune = t[0]
             if rune == '\t':
@@ -142,32 +143,33 @@ class TextInput(BaseInput):
                     if rx >= w:
                         break
                     if rx >= 0:
-                        self.instance.set_cell(x+rx, y, ' ', self.clr, self.clr)
+                        self.instance.set_cell(x+rx, y, ' ', self.fgcol, self.bgcol)
                     lx += 1
             else:
                 if rx >= 0:
-                    self.instance.set_cell(x+rx, y, rune, self.clr, self.clr)
+                    self.instance.set_cell(x+rx, y, rune, self.fgcol, self.bgcol)
                 lx += self.instance.rune_width(rune)
             # next:
             t = t[len(rune):]
 
         if self._visual_offset != 0:
-            self.instance.set_cell(x, y, '←', self.clr, self.clr)
-        return cursor
+            self.instance.set_cell(x, y, '←', self.fgcol, self.bgcol)
+        return prompt
 
     def _clear_widget(self):
+        clear = self.instance.color("Default")
         w, h = self.instance.size()
         h = self.height
         for i in range(h):
             y = i + self.line + 1
             for x in range(w):
-                self.instance.set_cell(x, y, " ", self.clr, self.clr)
+                self.instance.set_cell(x, y, " ", clear, clear)
         return None
 
     def _redraw_all(self):
         self._clear_widget()
-        cursor = self._draw_widget()
-        x, y = len(cursor[0]), self.line + 1
+        prompt = self._draw_widget()
+        x, y = len(prompt[0]), self.line + 1
         self.instance.set_cursor(x+self._cursorX(), y)
         self.instance.flush()
 
@@ -216,13 +218,12 @@ class TextInput(BaseInput):
 
 class PasswordInput(TextInput):
     def _draw_widget(self):
-        cursor = self._draw_cursor()
+        prompt = self._draw_prompt()
         w, h = self.WIDTH, 1
         self._adjust_voffset(w)
         t = self._text
         lx, tabstop = 0, 0
-        coldef = self.instance.color("Default")
-        x, y = len(cursor[0]), self.line + 1
+        x, y = len(prompt[0]), self.line + 1
         while True:
             rx = lx - self._visual_offset
             if len(t) == 0:
@@ -230,7 +231,7 @@ class PasswordInput(TextInput):
             if lx == tabstop:
                 tabstop += self.TABSTOP
             if rx >= w:
-                self.instance.set_cell(x+w-1, y, '→', coldef, coldef)
+                self.instance.set_cell(x+w-1, y, '→', self.fgcol, self.bgcol)
                 break
             rune = "*"
             if rune == '\t':
@@ -239,14 +240,15 @@ class PasswordInput(TextInput):
                     if rx >= w:
                         break
                     if rx >= 0:
-                        self.instance.set_cell(x+rx, y, ' ', coldef, coldef)
+                        self.instance.set_cell(x+rx, y, ' ', self.fgcol, self.bgcol)
                     lx += 1
             else:
                 if rx >= 0:
-                    self.instance.set_cell(x+rx, y, rune, coldef, coldef)
+                    self.instance.set_cell(x+rx, y, rune, self.fgcol, self.bgcol)
                 lx += self.instance.rune_width(rune)
             # next:
             t = t[len(rune):]
 
         if self._visual_offset != 0:
-            self.instance.set_cell(x, y, '←', coldef, coldef)
+            self.instance.set_cell(x, y, '←', self.fgcol, self.bgcol)
+        return prompt
