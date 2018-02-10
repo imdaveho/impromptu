@@ -1,12 +1,14 @@
 from . import Question
+from ._utils import configure
 
 
 class BaseInput(Question):
     """
     Base class that includes keyboard input helper functions.
     """
-    def __init__(self, name, query, **settings):
-        super().__init__(name, query, **settings)
+    def __init__(self, name, query, default="",
+                 color=None, colormap=None):
+        super().__init__(name, query, default, color, colormap)
         self.TABSTOP = 8
         self.PADDING = 5
         self.WIDTH = 60
@@ -105,28 +107,49 @@ class BaseInput(Question):
 
 
 class TextInput(BaseInput):
-    def __init__(self, name, query, **settings):
-        super().__init__(name, query, **settings)
+    def __init__(self, name, query, default="",
+                 color=None, colormap=None):
+        super().__init__(name, query, default, color, colormap)
         self.widget = "text"
-        self.prompt = "»"
+        self.config["prompt"] = (" » ", [(0,0,0), (2,0,0), (0,0,0)])
+        self.config["inputs"] = (0,0,0)
+
+    def _set_config(self, n, c):
+        default = self.config[n]
+        return {
+            "icon": (*c, default) if type(c) is tuple else (c, default),
+            "prompt": (*c, default) if type(c) is tuple else (c, default),
+            "height": (c, default),
+            "inputs": (c, default)
+        }.get(n, (*default, default))
+
+    def setup(self, icon=False, prompt=False, inputs=False, height=False):
+        params = locals()
+        for name in params:
+            config = params[name]
+            if not config or name == 'self':
+                continue
+            args = self._set_config(name, config)
+            self.config[name] = configure(*args)
+        return self
 
     def _draw_prompt(self):
-        x, y = 0, self.line + 1
-        p = self.symbols.get("prompt") or self.prompt
-        pc = self.colors.get("prompt") or self.instance.color("Red")
-        prompt = (f" {p}  ", (self.fgcol, pc, self.fgcol, self.fgcol))
-        for ch, color in zip(prompt[0], prompt[1]):
-            self.instance.set_cell(x, y, ch, color, self.bgcol)
+        x, y = 0, self.linenum + 1 # one line below the query
+        prompt, colormap = self.config["prompt"]
+        for ch, colors in zip(prompt, colormap):
+            fg, attr, bg = colors
+            self.instance.set_cell(x, y, ch, fg|attr, bg)
             x += 1
-        return prompt
+        return None
 
     def _draw_widget(self):
-        prompt = self._draw_prompt()
+        prompt, _ = self.config["prompt"]
+        fg, attr, bg = self.config["inputs"]
         w, h = self.WIDTH, 1
         self._adjust_voffset(w)
         t = self._text
         lx, tabstop = 0, 0
-        x, y = len(prompt[0]), self.line + 1
+        x, y = len(prompt) + 1, self.linenum + 1 # one cell after the prompt
         while True:
             rx = lx - self._visual_offset
             if len(t) == 0:
@@ -134,42 +157,44 @@ class TextInput(BaseInput):
             if lx == tabstop:
                 tabstop += self.TABSTOP
             if rx >= w:
-                self.instance.set_cell(x+w-1, y, '→', self.fgcol, self.bgcol)
+                self.instance.set_cell(x+w-1, y, '→', fg|attr, bg)
                 break
-            rune = t[0]
+            rune = t[0] # TODO: confirm why t[0]
             if rune == '\t':
                 while lx < tabstop:
                     rx = lx - self._visual_offset
                     if rx >= w:
-                        break
+                        break # goto next
                     if rx >= 0:
-                        self.instance.set_cell(x+rx, y, ' ', self.fgcol, self.bgcol)
+                        self.instance.set_cell(x+rx, y, ' ', fg|attr, bg)
                     lx += 1
             else:
                 if rx >= 0:
-                    self.instance.set_cell(x+rx, y, rune, self.fgcol, self.bgcol)
+                    char = "*" if self.widget == "password" else rune
+                    self.instance.set_cell(x+rx, y, char, fg|attr, bg)
                 lx += self.instance.rune_width(rune)
             # next:
             t = t[len(rune):]
 
         if self._visual_offset != 0:
-            self.instance.set_cell(x, y, '←', self.fgcol, self.bgcol)
-        return prompt
+            self.instance.set_cell(x, y, '←', fg|attr, bg)
+        return None
 
     def _clear_widget(self):
-        clear = self.instance.color("Default")
         w, h = self.instance.size()
-        h = self.height
+        h = self.config["height"]
         for i in range(h):
-            y = i + self.line + 1
+            y = i + self.linenum + 1
             for x in range(w):
-                self.instance.set_cell(x, y, " ", clear, clear)
+                self.instance.set_cell(x, y, " ", 0, 0)
         return None
 
     def _redraw_all(self):
         self._clear_widget()
-        prompt = self._draw_widget()
-        x, y = len(prompt[0]), self.line + 1
+        self._draw_prompt()
+        self._draw_widget()
+        prompt, _ = self.config["prompt"]
+        x, y = len(prompt) + 1, self.linenum + 1
         self.instance.set_cursor(x+self._cursorX(), y)
         self.instance.flush()
 
@@ -177,7 +202,6 @@ class TextInput(BaseInput):
         # check minimum width and height
         # w, h = self.instance.size()
         # do the check here: TODO
-
         # draw the query and prompt
         self._redraw_all()
         # start the widget
@@ -208,7 +232,6 @@ class TextInput(BaseInput):
                 else:
                     if c != 0:
                         self._insert_rune(chr(c))
-
             elif evt["Type"] == self.instance.event("Error"):
                 # EventError
                 raise(Exception(evt["Err"]))
@@ -217,38 +240,7 @@ class TextInput(BaseInput):
 
 
 class PasswordInput(TextInput):
-    def _draw_widget(self):
-        prompt = self._draw_prompt()
-        w, h = self.WIDTH, 1
-        self._adjust_voffset(w)
-        t = self._text
-        lx, tabstop = 0, 0
-        x, y = len(prompt[0]), self.line + 1
-        while True:
-            rx = lx - self._visual_offset
-            if len(t) == 0:
-                break
-            if lx == tabstop:
-                tabstop += self.TABSTOP
-            if rx >= w:
-                self.instance.set_cell(x+w-1, y, '→', self.fgcol, self.bgcol)
-                break
-            rune = "*"
-            if rune == '\t':
-                while lx < tabstop:
-                    rx = lx - self._visual_offset
-                    if rx >= w:
-                        break
-                    if rx >= 0:
-                        self.instance.set_cell(x+rx, y, ' ', self.fgcol, self.bgcol)
-                    lx += 1
-            else:
-                if rx >= 0:
-                    self.instance.set_cell(x+rx, y, rune, self.fgcol, self.bgcol)
-                lx += self.instance.rune_width(rune)
-            # next:
-            t = t[len(rune):]
-
-        if self._visual_offset != 0:
-            self.instance.set_cell(x, y, '←', self.fgcol, self.bgcol)
-        return prompt
+    def __init__(self, name, query, default="",
+                 color=None, colormap=None):
+        super().__init__(name, query, default, color, colormap)
+        self.widget = "password"
