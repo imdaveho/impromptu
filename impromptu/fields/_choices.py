@@ -1,6 +1,6 @@
 from platform import system
-from . import Question
-from ._utils import configure
+from ._base import Question
+from impromptu.utils.multimethod import configure
 
 
 class ChoiceSelect(Question):

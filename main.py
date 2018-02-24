@@ -1,4 +1,5 @@
 from intermezzo import Intermezzo as mzo
+from impromptu import Impromptu
 from impromptu.fields import *
 
 
