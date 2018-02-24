@@ -29,8 +29,7 @@ class ChoiceSelect(Question):
             "cursor": (*c, default) if type(c) is tuple else (c, default),
             "active": (c, default),
             "inactive": (c, default),
-            "height": (c, default),
-            "choices": (c, default) # TODO: update configure to support
+            "height": (c, default)
         }.get(n, (*default, default))
 
     def setup(self, icon=False, cursor=False, choices=False,
@@ -58,8 +57,8 @@ class ChoiceSelect(Question):
     def _prepare_choices(self):
         active = self.config["active"]
         inactive = self.config["inactive"]
-        choices = [(c, [inactive for _ in c])
-                   for c in self._segment_choices()]
+        segment = self._segment_choices()
+        choices = [(c, [inactive for _ in c]) for c in segment]
         cursor, cursor_cm = self.config["cursor"]
         blanks = ''.join([" " for _ in cursor])
         blanks_cm = [inactive for _ in cursor_cm]
@@ -151,50 +150,69 @@ class ChoiceSelect(Question):
 
 
 class MultiSelect(ChoiceSelect):
-    def __init__(self, name, query, choices=[], size=7, **settings):
-        super().__init__(name, query, choices, size, **settings)
-        self.widget = "multiple"
-        self.choices = [(ch, False) for ch in choices]
-        self.filled = '►' if system() == "Windows" else '◉'
-        self.opened = '○'
+    def __init__(self, name, query, choices=None, size=7,
+                 default="", color=None, colormap=None):
+        super().__init__(name, query, choices, size, default, color, colormap)
+        self.widget = "multi-choice"
+        self.choices = [(c, False) for c in choices]
+        self.config["cursor"] = (" › ", [(0,0,0), (7,0,0), (0,0,0)])
+        self.config["selected"] = "► " if system() == "Windows" else "◉ "
+        self.config["unselected"] = '○ '
 
-    def _make_visible_list(self):
-        segment = self._make_segment_list()
-        # get symbols
-        c = self.symbols.get("cursor") or self.cursor
-        f = self.symbols.get("filled") or self.filled
-        o = self.symbols.get("opened") or self.opened
-        # get colors
-        cyan = self.instance.color("Cyan")
-        cc = self.colors.get("cursor") or cyan
-        tg = self.colors.get("toggled") or cyan
-        ug = self.colors.get("untoggled") or self.fgcol
-        # configure text/color pairs
-        cursor = (f" {c}", (self.fgcol, cc))
-        blanks = tuple(reduce(lambda x,y: x+y, t) for t in zip(*list([
-            (''.join(" "), (self.fgcol,)) for _ in f" {c}"])))
-        filled = (f"{f} ", (tg, self.fgcol))
-        normal = (f"{o} ", (ug, self.fgcol))
-        select = (f"{o} ", (tg, self.fgcol))
-        new_list = []
-        for i, ch in enumerate(segment):
-            tx = ch[0]
-            if i == self.cursor_index: # cursor on item
-                if ch[1]: # toggled
-                    text = cursor[0] + filled[0] + tx
-                    color = cursor[1] + filled[1] + tuple(tg for _ in tx)
-                else: # untoggled
-                    text = cursor[0] + select[0] + tx
-                    color = cursor[1] + select[1] + tuple(tg for _ in tx)
-            else:
-                if ch[1]:
-                    text = blanks[0] + filled[0] + tx
-                    color = blanks[1] + filled[1] + tuple(tg for _ in tx)
+    def _set_config(self, n, c):
+        default = self.config[n]
+        return {
+            "icon": (*c, default) if type(c) is tuple else (c, default),
+            "cursor": (*c, default) if type(c) is tuple else (c, default),
+            "selected": (c, default),
+            "unselected": (c, default),
+            "active": (c, default),
+            "inactive": (c, default),
+            "height": (c, default),
+        }.get(n, (*default, default))
+
+    def setup(self, icon=False, cursor=False, selected=False,
+              unselected=False, active=False, inactive=False,
+              height=False):
+        params = locals()
+        for name in params:
+            config = params[name]
+            if not config or name == 'self':
+                continue
+            args = self._set_config(name, config)
+            self.config[name] = configure(*args)
+        return self
+
+    def _prepare_choices(self):
+        active = self.config["active"]
+        inactive = self.config["inactive"]
+        cursor, cursor_cm = self.config["cursor"]
+        selected = self.config["selected"]
+        unselected = self.config["unselected"]
+        choices = self._segment_choices()
+        blanks = ''.join([" " for _ in cursor])
+        blanks_cm = [inactive for _ in blanks]
+        render_list = []
+        for i, c in enumerate(choices):
+            render = None
+            choice, is_checked = c
+            if i == self.cursor_index:
+                if is_checked:
+                    text = cursor + selected + choice
                 else:
-                    text = blanks[0] + normal[0] + tx
-                    color = blanks[1] + normal[1] + tuple(ug for _ in tx)
-            new_list.append((text, color))
-        return new_list
+                    text = cursor + unselected + choice
+                colormap = [active for _ in text]
+                render = (text, colormap)
+            else:
+                if is_checked:
+                    text = blanks + selected + choice
+                    colormap = [active for _ in text]
+                else:
+                    text = blanks + unselected + choice
+                    colormap = [inactive for _ in text]
+                render = (text, colormap)
+            render_list.append(render)
+        return render_list
 
     def _run(self):
         # draw the query and prompt
@@ -207,66 +225,38 @@ class MultiSelect(ChoiceSelect):
                 if k == self.instance.key("Esc"):
                     break
                 elif k == self.instance.key("ArrowUp"):
-                    if self.cursor_index > self._padding:
+                    if self.cursor_index > self.PADDING:
                         self.cursor_index -= 1
                         self.choice_index -= 1
-                    elif self.choice_index > self._padding:
+                    elif self.choice_index > self.PADDING:
                         self.choice_index -= 1
-                    elif self.choice_index <= self._padding:
+                    elif self.choice_index <= self.PADDING:
                         if self.choice_index > 0:
                             self.choice_index -= 1
                             self.cursor_index -= 1
                         else:
                             self.cursor_index = 0
                 elif k == self.instance.key("ArrowDown"):
-                    if self.cursor_index < self._padding:
+                    if self.cursor_index < self.PADDING:
                         self.cursor_index += 1
                         self.choice_index += 1
-                    elif self.choice_index < self._bottom - self._padding:
+                    elif self.choice_index < self.BOTTOM - self.PADDING:
                         self.choice_index += 1
-                    elif self.choice_index >= self._bottom - self._padding:
-                        if self.choice_index < self._bottom:
+                    elif self.choice_index >= self.BOTTOM - self.PADDING:
+                        if self.choice_index < self.BOTTOM:
                             self.choice_index += 1
                             self.cursor_index += 1
                         else:
-                            self.choice_index = self._bottom
+                            self.choice_index = self.BOTTOM
                 elif k == self.instance.key("ArrowRight"):
-                    # new_choices = []
-                    # for i, ch in enumerate(self.choices):
-                    #     if i == self.choice_index:
-                    #         new_choices.append((ch[0], True))
-                    #     else:
-                    #         new_choices.append(ch)
-                    # self.choices = new_choices
-                    ch = self.choices[self.choice_index]
-                    self.choices[self.choice_index] = (ch[0], True)
+                    choice, _ = self.choices[self.choice_index]
+                    self.choices[self.choice_index] = (choice, True)
                 elif k == self.instance.key("ArrowLeft"):
-                    # new_choices = []
-                    # for i, ch in enumerate(self.choices):
-                    #     if i == self.choice_index:
-                    #         new_choices.append((ch[0], False))
-                    #     else:
-                    #         new_choices.append(ch)
-                    # self.choices = new_choices
-                    ch = self.choices[self.choice_index]
-                    self.choices[self.choice_index] = (ch[0], False)
+                    choice, _ = self.choices[self.choice_index]
+                    self.choices[self.choice_index] = (choice, False)
                 elif k == self.instance.key("Space"):
-                    # new_choices = []
-                    # for i, ch in enumerate(self.choices):
-                    #     if i == self.choice_index:
-                    #         if ch[1]:
-                    #             new_ch = (ch[0], False)
-                    #         else:
-                    #             new_ch = (ch[0], True)
-                    #         new_choices.append(new_ch)
-                    #     else:
-                    #         new_choices.append(ch)
-                    # self.choices = new_choices
-                    ch = self.choices[self.choice_index]
-                    if ch[1]:
-                        self.choices[self.choice_index] = (ch[0], False)
-                    else:
-                        self.choices[self.choice_index] = (ch[0], True)
+                    choice, marked = self.choices[self.choice_index]
+                    self.choices[self.choice_index] = (choice, not marked)
                 else:
                     pass
 
@@ -274,4 +264,4 @@ class MultiSelect(ChoiceSelect):
                 # EventError
                 raise(Exception(evt["Err"]))
             self._redraw_all()
-        # self.result = self.choices[self.choice_index]
+        self.result = [ch for ch, s in self.choices if s]

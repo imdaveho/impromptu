@@ -1,4 +1,3 @@
-from contextlib import ExitStack
 from intermezzo import Intermezzo as mzo
 
 #     def ask(self):
@@ -107,14 +106,11 @@ class Question(object):
         * prompt (tuple): Symbol for the start of a textbox. Default: », Red. (Text/Password only)
 
         * cursor (tuple): The symbol for selecting options in choice fields. Default: ›, Cyan. (Choice/Multi only)
-        * choices (dict): Dict with the choice index as a key and a colormap for each Choice/Multi state. (Choice/Multi only)
-
-        * selected (tuple): Symbol for a selected choice state. Default: ◉ (*nix) | ► (win), Cyan. (Multi only)
-        * unselected (tuple): Symbol for an open choice state. Default: ○, Default/White. (Multi only)
-
+        * selected (string): Symbol for a selected choice state. Default: ◉ (*nix) | ► (win) (Multi only)
+        * unselected (string): Symbol for an open choice state. Default: ○ (Multi only)
         * inputs (triplet): Color for the user inputted text. (Text/Password only)
-        * active (triplet): Color state when the cursor is on top of a choice. Default: Cyan. (Choice/Multi only)
-        * inactive (triplet): Color state when the cursor is on NOT top of a choice. Default: Cyan. (Choice/Multi only)
+        * active (triplet): Color state for choice text when the cursor is on top of a choice. Default: Cyan. (Choice/Multi only)
+        * inactive (triplet): Color state for choice text when the cursor is on NOT top of a choice. Default: Default/White. (Choice/Multi only)
         * height (int): Set the number of vertical space to occupy between Questions.
 
     Todo:
@@ -181,7 +177,5 @@ class Question(object):
         self.instance.clear(0, 0)
         return None
 
-
-from ._inputs import TextInput, PasswordInput
-from ._choices import ChoiceSelect
-#, MultiSelect
+# from ._inputs import TextInput, PasswordInput
+# from ._choices import ChoiceSelect, MultiSelect

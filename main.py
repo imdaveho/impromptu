@@ -9,9 +9,9 @@ if __name__ == "__main__":
     q2.setup(icon="<?>", prompt=(">>>>>>>", (6,0,0)))
     instance.register(q1)
     instance.register(q2)
-    q3 = ChoiceSelect(name="favorite", query="What is your favorite food?",
-                      choices=["Pizza", "Steak", "Spaghetti", "Fried Chicken", "Kale", "Burgers", "Lobster", "Ice Cream"])
-    q3.setup(inactive=3)
+    q3 = MultiSelect(name="favorite", query="What is your favorite food?",
+                     choices=["Pizza", "Steak", "Spaghetti", "Fried Chicken", "Kale", "Burgers", "Lobster", "Ice Cream"])
+    # q3.setup(inactive=3)
     instance.register(q3)
     instance.start()
 
