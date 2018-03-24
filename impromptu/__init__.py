@@ -12,6 +12,8 @@ class Impromptu(object):
     def __init__(self):
         self.index = 0
         self.questions = []
+        self.responses = {}
+        self.prev_result = ""
 
         # initialize Intermezzo
         err = mzo.init()
@@ -38,9 +40,18 @@ class Impromptu(object):
         collection and renders their contents to the screen
         """
         for q in self.questions:
-            q.ask()
+            should_mount = q.on_mount(self.prev_result)
+            curr_result = ""
+            if should_mount:
+                curr_result = q.ask()
+            valid = q.on_unmount(curr_result)
+            if not valid:
+                # TODO: re-run this question
+                continue
+            self.prev_result = curr_result
         results = {}
         mzo.close()
         for q in self.questions:
             results[q.name] = q.result
-        print(results)
+        self.responses = results
+        print(self.responses)

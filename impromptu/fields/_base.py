@@ -96,8 +96,14 @@ class Question(object):
         """
         pass
 
+    def on_mount(self, prev_result):
+        return True
+
     def ask(self):
         self._draw_query()
         self._run()
         self.instance.clear(0, 0)
-        return None
+        return self.result
+
+    def on_unmount(self, curr_result):
+        return True
