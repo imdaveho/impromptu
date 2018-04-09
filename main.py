@@ -12,7 +12,9 @@ if __name__ == "__main__":
     instance.register(q2)
     q3 = MultiSelect(name="favorite", query="What is your favorite food?",
                      choices=["Pizza", "Steak", "Spaghetti", "Fried Chicken", "Kale", "Burgers", "Lobster", "Ice Cream"])
-    # q3.setup(inactive=3)
+    q3.setup(posthook={
+        "Lobster": False
+    })
     instance.register(q3)
     instance.start()
 

@@ -115,10 +115,16 @@ def configure(newv, default):
         return default
     return (newv, cm)
 
-@dispatch(dict, list)
-def configure(newch, ch):
-    # choices={...}
-    return height
+# @dispatch(dict, list)
+# def configure(newch, ch):
+#     # choices={...}
+#     return height
+
+@dispatch(dict, dict)
+def configure(newhook, default):
+    if type(newhook) is not dict:
+        return default
+    return newhook
 
 @dispatch(tuple, tuple)
 def configure(colors, default):

@@ -67,6 +67,8 @@ class Question(object):
         self.config["height"] = 2
         self.config["icon"]   = ("[?]", [(0,0,0), (3,0,0), (0,0,0)])
         self.config["query"]  = (query, query_colormap)
+        self.config["prehook"] = {}
+        self.config["posthook"] = {}
 
     def _set_line(self, n):
         self.linenum = n
@@ -96,14 +98,35 @@ class Question(object):
         """
         pass
 
-    def on_mount(self, prev_result):
-        return True
+    def on(self, stage, lookup):
+        cfg = self.config
+        hooks = cfg.get(stage, {})
+        hook = hooks.get(lookup, None)
+        result = {
+            "action": None,
+            "valid": True,
+            "error": ""
+        }
+        # Case 1: function
+        if callable(hook):
+            result["action"] = hook
+        # Case 2: regex
+        elif hook is None:
+            hook = hooks.get("regex", None)
+            if hook:
+                # TODO: regex support
+                # TODO: error handling
+                result["valid"] = True
+                result["error"] = ""
+                return result
+        # Case 3: boolean
+        elif hook is False:
+            result["valid"] = False
+            result["error"] = f"{lookup} is an invalid answer"
+        return result
 
     def ask(self):
         self._draw_query()
         self._run()
         self.instance.clear(0, 0)
         return self.result
-
-    def on_unmount(self, curr_result):
-        return True

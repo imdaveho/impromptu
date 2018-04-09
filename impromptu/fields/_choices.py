@@ -29,11 +29,13 @@ class ChoiceSelect(Question):
             "cursor": (*c, default) if type(c) is tuple else (c, default),
             "active": (c, default),
             "inactive": (c, default),
-            "height": (c, default)
+            "height": (c, default),
+            "prehook": (c, default),
+            "posthook": (c, default)
         }.get(n, (*default, default))
 
     def setup(self, icon=False, cursor=False, choices=False,
-                    active=False, inactive=False, height=False):
+                    active=False, inactive=False, height=False, prehook=False, posthook=False):
         params = locals()
         for name in params:
             config = params[name]
@@ -169,11 +171,13 @@ class MultiSelect(ChoiceSelect):
             "active": (c, default),
             "inactive": (c, default),
             "height": (c, default),
+            "prehook": (c, default),
+            "posthook": (c, default)
         }.get(n, (*default, default))
 
     def setup(self, icon=False, cursor=False, selected=False,
               unselected=False, active=False, inactive=False,
-              height=False):
+              height=False, prehook=False, posthook=False):
         params = locals()
         for name in params:
             config = params[name]

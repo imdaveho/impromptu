@@ -120,10 +120,12 @@ class TextInput(BaseInput):
             "icon": (*c, default) if type(c) is tuple else (c, default),
             "prompt": (*c, default) if type(c) is tuple else (c, default),
             "height": (c, default),
-            "inputs": (c, default)
+            "inputs": (c, default),
+            "prehook": (c, default),
+            "posthook": (c, default)
         }.get(n, (*default, default))
 
-    def setup(self, icon=False, prompt=False, inputs=False, height=False):
+    def setup(self, icon=False, prompt=False, inputs=False, height=False, prehook=False, posthook=False):
         params = locals()
         for name in params:
             config = params[name]

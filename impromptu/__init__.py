@@ -10,10 +10,8 @@ class Impromptu(object):
     """
 
     def __init__(self):
-        self.index = 0
         self.questions = []
         self.responses = {}
-        self.prev_result = ""
 
         # initialize Intermezzo
         err = mzo.init()
@@ -34,21 +32,85 @@ class Impromptu(object):
         question.instance = mzo
         self.questions.append(question)
 
+    def should_mount(self, index, question):
+        mount = "prehook"
+        default = question.on(mount, "__default__")
+        default_action = default["action"]
+        if default_action:
+            default_action()
+        lookups = []
+        if index > 0:
+            question = self.questions[index - 1]
+        result = question.result
+        if type(result) is list:
+            lookups = result
+        else:
+            lookups.append(result)
+        renders = []
+        for lookup in lookups:
+            hook = question.on(mount, lookup)
+            render = hook["valid"]
+            hook_action = hook["action"]
+            if hook_action:
+                render = hook_action()
+            renders.append(render)
+        # TODO: error handling
+        should_render = any(renders)
+        return should_render
+
+    def should_unmount(self, question):
+        unmount = "posthook"
+        default = question.on(unmount, "__default__")
+        default_action = default["action"]
+        if default_action:
+            default_action()
+        lookups = []
+        result = question.result
+        if type(result) is list:
+            lookups = result
+        else:
+            lookups.append(result)
+        errors = []
+        for lookup in lookups:
+            hook = question.on(unmount, lookup)
+            is_valid = hook["valid"]
+            if not is_valid:
+                error = hook["error"]
+                errors.append(error)
+        return errors
+
     def start(self):
         """
         Executes the main method of each of the Questions in the internal
         collection and renders their contents to the screen
         """
-        for q in self.questions:
-            should_mount = q.on_mount(self.prev_result)
-            curr_result = ""
+        i = 0
+        # for q in self.questions:
+        while len(self.questions) > i:
+            q = self.questions[i]
+            should_mount = self.should_mount(i,q)
             if should_mount:
-                curr_result = q.ask()
-            valid = q.on_unmount(curr_result)
-            if not valid:
-                # TODO: re-run this question
+                q.ask()
+            errors = self.should_unmount(q)
+            if any(errors):
+                # x = 0
+                # y = q.linenum + q.size + 2
+                # for e in errors:
+                #     # TODO: display errors
+                #     for ch in e:
+                #         fg, attr, bg = 7, 0, 0
+                #         mzo.set_cell(x, y, ch, fg|attr, bg)
+                #         x += 1
+                #     q._redraw_all()
+                #     pass
+                # # TODO: re-run this question
+                # #       continue will skip i++
+                # # TODO: reset question!
+                # from time import sleep
+                # sleep(1)
                 continue
-            self.prev_result = curr_result
+                # TODO: should re-run __default__?
+            i += 1
         results = {}
         mzo.close()
         for q in self.questions:
