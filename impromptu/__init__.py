@@ -58,7 +58,7 @@ class Impromptu(object):
         should_render = any(renders)
         return should_render
 
-    def should_unmount(self, question):
+    def should_proceed(self, question):
         unmount = "posthook"
         default = question.on(unmount, "__default__")
         default_action = default["action"]
@@ -91,7 +91,7 @@ class Impromptu(object):
             should_mount = self.should_mount(i,q)
             if should_mount:
                 q.ask()
-            errors = self.should_unmount(q)
+            errors = self.should_proceed(q)
             if any(errors):
                 # x = 0
                 # y = q.linenum + q.size + 2
