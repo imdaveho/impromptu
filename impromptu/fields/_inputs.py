@@ -213,7 +213,8 @@ class TextInput(BaseInput):
                 break
             await self._poll_event()
             await self._handle_events()
-            await asyncio.gather(*self.lifecycle["updates"])
+            await self._handle_updates()
+            self._redraw_all()
         self.result = self._text
 
     async def _handle_events(self):

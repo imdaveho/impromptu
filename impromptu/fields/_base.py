@@ -155,11 +155,9 @@ class Question(object):
             self.lifecycle["unmount"] = fn
 
     def on_update(self, *fns):
-        tasks = []
         for fn in fns:
             if callable(fn):
-                tasks.append(fn)
-        self.lifecycle["updates"] = tasks
+                self.lifecycle["updates"].append(fn)
 
     async def _main(self):
         """Execute the main processes for the field at hand.
@@ -194,23 +192,26 @@ class Question(object):
             evt_log = [evts.popleft() for _ in range(cache)]
         return evt_log
 
-    async def ask(self):
-        # set things up
-        self._mount()
-        self._render()
+    async def _handle_updates(self):
+        # tasks = []
+        # for i, fn in enumerate(self.lifecycle["updates"]):
+        #     tasks.append(self.loop.create_task(fn(self, i)))
+        # await asyncio.gather(*tasks)
+        tasks = []
 
-        # set the update tasks to run async
-        def wrap_async(fn, idx):
-            future = self.threadpool.submit(fn, self, idx)
+        def force_async(fn, i):
+            """https://blog.konpat.me/python-turn-sync-functions-to-async/"""
+            future = self.threadpool.submit(fn, self, i)
             return asyncio.wrap_future(future)
 
-        tasks = []
         for i, fn in enumerate(self.lifecycle["updates"]):
-            coroutine = wrap_async(fn, i)
-            tasks.append(coroutine)
-        self.lifecycle["updates"] = tasks
+            tasks.append(force_async(fn, i))
 
-        # run the main loop
+        await asyncio.gather(*tasks)
+
+    async def ask(self):
+        self._mount()
+        self._render()
         await self._main()
         self._unmount()
         self.cli.clear(0, 0)
