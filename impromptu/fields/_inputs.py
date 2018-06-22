@@ -1,3 +1,4 @@
+import asyncio
 from ._base import Question
 from impromptu.utils.multimethod import configure
 
@@ -20,7 +21,7 @@ class BaseInput(Question):
     def _rune_advance(self, r, pos):
         if r == '\t':
             return self.TABSTOP - (pos % self.TABSTOP)
-        return self.instance.rune_width(r)
+        return self.cli.rune_width(r)
 
     def _remove(self, text, start, end):
         text = text[:start] + text[end:]
@@ -69,19 +70,21 @@ class BaseInput(Question):
             return
         self._move_one_backward()
         size = len(self._under_cursor())
-        self._text = self._remove(self._text, self._cursor_unicode_offset, self._cursor_unicode_offset + size)
+        self._text = self._remove(self._text, self._cursor_unicode_offset,
+                                  self._cursor_unicode_offset + size)
 
     def _delete_forward(self):
         if self._cursor_unicode_offset == len(self._text):
             return
         size = len(self._under_cursor())
-        self._text = self._remove(self._text, self._cursor_unicode_offset, self._cursor_unicode_offset + size)
+        self._text = self._remove(self._text, self._cursor_unicode_offset,
+                                  self._cursor_unicode_offset + size)
 
     def _delete_to_end(self):
         self._text = self._text[:self._cursor_unicode_offset]
 
-    def _insert_rune(self, rune):
-        self._text = self._insert(self._text, self._cursor_unicode_offset, rune)
+    def _insert_rune(self, r):
+        self._text = self._insert(self._text, self._cursor_unicode_offset, r)
         self._move_one_forward()
 
     def _cursorX(self):
@@ -100,7 +103,8 @@ class BaseInput(Question):
         if (self._cursor_offset - self._visual_offset) >= threshold:
             self._visual_offset = self._cursor_offset + (ht - width + 1)
 
-        if self._visual_offset != 0 and (self._cursor_offset - self._visual_offset) < ht:
+        if self._visual_offset != 0 and (self._cursor_offset -
+                                         self._visual_offset) < ht:
             self._visual_offset = self._cursor_offset - ht
             if self._visual_offset < 0:
                 self._visual_offset = 0
@@ -111,8 +115,8 @@ class TextInput(BaseInput):
                  color=None, colormap=None):
         super().__init__(name, query, default, color, colormap)
         self.widget = "text"
-        self.config["prompt"] = (" » ", [(0,0,0), (2,0,0), (0,0,0)])
-        self.config["inputs"] = (0,0,0)
+        self.config["prompt"] = (" » ", [(0, 0, 0), (2, 0, 0), (0, 0, 0)])
+        self.config["inputs"] = (0, 0, 0)
 
     def _set_config(self, n, c):
         default = self.config[n]
@@ -121,11 +125,9 @@ class TextInput(BaseInput):
             "prompt": (*c, default) if type(c) is tuple else (c, default),
             "height": (c, default),
             "inputs": (c, default),
-            "prehook": (c, default),
-            "posthook": (c, default)
         }.get(n, (*default, default))
 
-    def setup(self, icon=False, prompt=False, inputs=False, height=False, prehook=False, posthook=False):
+    def setup(self, icon=False, prompt=False, inputs=False, height=False):
         params = locals()
         for name in params:
             config = params[name]
@@ -136,11 +138,11 @@ class TextInput(BaseInput):
         return self
 
     def _draw_prompt(self):
-        x, y = 0, self.linenum + 1 # one line below the query
+        x, y = 0, self.linenum + 1  # one line below the query
         prompt, colormap = self.config["prompt"]
         for ch, colors in zip(prompt, colormap):
             fg, attr, bg = colors
-            self.instance.set_cell(x, y, ch, fg|attr, bg)
+            self.cli.set_cell(x, y, ch, fg | attr, bg)
             x += 1
         return None
 
@@ -151,7 +153,7 @@ class TextInput(BaseInput):
         self._adjust_voffset(w)
         t = self._text
         lx, tabstop = 0, 0
-        x, y = len(prompt) + 1, self.linenum + 1 # one cell after the prompt
+        x, y = len(prompt) + 1, self.linenum + h  # one cell after the prompt
         while True:
             rx = lx - self._visual_offset
             if len(t) == 0:
@@ -159,36 +161,36 @@ class TextInput(BaseInput):
             if lx == tabstop:
                 tabstop += self.TABSTOP
             if rx >= w:
-                self.instance.set_cell(x+w-1, y, '→', fg|attr, bg)
+                self.cli.set_cell(x+w-1, y, '→', fg | attr, bg)
                 break
-            rune = t[0] # TODO: confirm why t[0]
+            rune = t[0]  # TODO: confirm why t[0]
             if rune == '\t':
                 while lx < tabstop:
                     rx = lx - self._visual_offset
                     if rx >= w:
-                        break # goto next
+                        break  # goto next
                     if rx >= 0:
-                        self.instance.set_cell(x+rx, y, ' ', fg|attr, bg)
+                        self.cli.set_cell(x+rx, y, ' ', fg | attr, bg)
                     lx += 1
             else:
                 if rx >= 0:
                     char = "*" if self.widget == "password" else rune
-                    self.instance.set_cell(x+rx, y, char, fg|attr, bg)
-                lx += self.instance.rune_width(rune)
+                    self.cli.set_cell(x+rx, y, char, fg | attr, bg)
+                lx += self.cli.rune_width(rune)
             # next:
             t = t[len(rune):]
 
         if self._visual_offset != 0:
-            self.instance.set_cell(x, y, '←', fg|attr, bg)
+            self.cli.set_cell(x, y, '←', fg | attr, bg)
         return None
 
     def _clear_widget(self):
-        w, h = self.instance.size()
+        w, h = self.cli.size()
         h = self.config["height"]
         for i in range(h):
             y = i + self.linenum + 1
             for x in range(w):
-                self.instance.set_cell(x, y, " ", 0, 0)
+                self.cli.set_cell(x, y, " ", 0, 0)
         return None
 
     def _redraw_all(self):
@@ -197,48 +199,76 @@ class TextInput(BaseInput):
         self._draw_widget()
         prompt, _ = self.config["prompt"]
         x, y = len(prompt) + 1, self.linenum + 1
-        self.instance.set_cursor(x+self._cursorX(), y)
-        self.instance.flush()
+        self.cli.set_cursor(x+self._cursorX(), y)  # TODO: explain this line
+        self.cli.flush()
 
-    def _run(self):
+    async def _main(self):
         # check minimum width and height
-        # w, h = self.instance.size()
+        # w, h = self.cli.size()
         # do the check here: TODO
         # draw the query and prompt
         self._redraw_all()
-        # start the widget
         while True:
-            evt = self.instance.poll_event()
-            if evt["Type"] == self.instance.event("Key"):
-                k, c = evt["Key"], evt["Ch"]
-                if k == self.instance.key("Esc"):
-                    break
-                elif k == self.instance.key("CtrlB") or k == self.instance.key("ArrowLeft"):
-                    self._move_one_backward()
-                elif k == self.instance.key("CtrlF") or k == self.instance.key("ArrowRight"):
-                    self._move_one_forward()
-                elif k == self.instance.key("Backspace") or k == self.instance.key("Backspace2"):
-                    self._delete_backward()
-                elif k == self.instance.key("CtrlD") or k == self.instance.key("Delete"):
-                    self._delete_forward()
-                elif k == self.instance.key("Tab"):
-                    self._insert_rune('\t')
-                elif k == self.instance.key("Space"):
-                    self._insert_rune(' ')
-                elif k == self.instance.key("CtrlK"):
-                    self._delete_to_end()
-                elif k == self.instance.key("Home") or k == self.instance.key("CtrlA"):
-                    self._move_to_beginning()
-                elif k == self.instance.key("End") or k == self.instance.key("CtrlE"):
-                    self._move_to_end()
-                else:
-                    if c != 0:
-                        self._insert_rune(chr(c))
-            elif evt["Type"] == self.instance.event("Error"):
-                # EventError
-                raise(Exception(evt["Err"]))
-            self._redraw_all()
+            if self.end_signal:
+                break
+            await self._poll_event()
+            await self._handle_events()
+            await asyncio.gather(*self.lifecycle["updates"])
         self.result = self._text
+
+    async def _handle_events(self):
+        evts = self.pull_events()
+        if not evts:
+            return
+        evt = evts[0]
+        if evt["Type"] == self.cli.event("Key") and self.evt_mutex == -1:
+            k, c = evt["Key"], evt["Ch"]
+            if k == self.cli.key("Esc"):
+                self.end_signal = True
+
+            elif (k == self.cli.key("CtrlB") or
+                  k == self.cli.key("ArrowLeft")):
+                self._move_one_backward()
+
+            elif (k == self.cli.key("CtrlF") or
+                  k == self.cli.key("ArrowRight")):
+                self._move_one_forward()
+
+            elif (k == self.cli.key("Backspace") or
+                  k == self.cli.key("Backspace2")):
+                self._delete_backward()
+
+            elif (k == self.cli.key("CtrlD") or
+                  k == self.cli.key("Delete")):
+                self._delete_forward()
+
+            elif k == self.cli.key("Tab"):
+                self._insert_rune('\t')
+
+            elif k == self.cli.key("Space"):
+                self._insert_rune(' ')
+
+            elif k == self.cli.key("CtrlK"):
+                self._delete_to_end()
+
+            elif (k == self.cli.key("Home") or
+                  k == self.cli.key("CtrlA")):
+                self._move_to_beginning()
+
+            elif (k == self.cli.key("End") or
+                  k == self.cli.key("CtrlE")):
+                self._move_to_end()
+
+            else:
+                # from GoDoc for termbox-go: 'Ch' is invalid
+                # if it is 0 when the EventType is 'Key'
+                if c != 0:
+                    self._insert_rune(chr(c))
+
+        elif evt["Type"] == self.cli.event("Error"):
+            # EventError
+            raise(Exception(evt["Err"]))
+        self._redraw_all()
 
 
 class PasswordInput(TextInput):

@@ -4,6 +4,7 @@
 import time
 import random
 
+
 class Registrar(object):
 
     def __init__(self):
@@ -21,10 +22,11 @@ class Registrar(object):
         while True:
             timestamp = int(time.strftime("%m%d%H%M%S"))
             key = random.randint(0, timestamp)
-            if not key in keys:
+            if key not in keys:
                 return key
 
     def put(self, question):
+        keys = list(self.registry.keys())
         unique_key = self._make_unique_key()
         # link the questions together by referencing their unique keys
         previous_key = None
@@ -46,6 +48,8 @@ class Registrar(object):
     def get(self):
         # grabs the question of the current cursor
         # moves the cursor to the next question
+        if self.cursor is None:
+            return None
         question = self.registry[self.cursor]["data"]
         self.running = self.cursor
         self.cursor = self.registry[self.cursor]["next"]
@@ -192,7 +196,6 @@ class Registrar(object):
         else:
             # TODO: refine error messaging
             raise Exception("Not a valid merge candidate!")
-
 
     def skip(self, key=None):
         # needs to update self.orphans

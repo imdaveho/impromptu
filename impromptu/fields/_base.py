@@ -1,3 +1,8 @@
+import asyncio
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
+
+
 class Question(object):
     """The base Question type.
 
@@ -22,7 +27,7 @@ class Question(object):
         default (str): The default answer. Defaults to "".
         result (str): The value of the response to the query.
         config (dict): Dict holding rendering details specific to each key.
-        linenum (int): Logs the line number to which the Question is being rendered
+        linenum (int): The line number to which the Question is being rendered
 
     Note:
         Config keys include:
@@ -50,43 +55,86 @@ class Question(object):
 
     def __init__(self, name, query, default="",
                  color=None, colormap=None):
-        self.instance = None
-        self.widget = None
+        # set variables sent through initialization
         self.name = name
         self.query = query
         self.default = default
-        self.result = ""
-        self.config = {}
-        self.linenum = 0
         if color is None:
             color = (0, 0, 0)
         if colormap is None:
             query_colormap = [color for _ in query]
         else:
             query_colormap = colormap
+        # set variables pass through the main prompt loop
+        self.cli = None
+        self.loop = None
+        self.registry = None
+        # set configuration variables
+        self.widget = ""
+        self.result = ""
+        self.linenum = 0
+        self.config = {}
         self.config["height"] = 2
-        self.config["icon"]   = ("[?]", [(0,0,0), (3,0,0), (0,0,0)])
-        self.config["query"]  = (query, query_colormap)
-        self.config["prehook"] = {}
-        self.config["posthook"] = {}
+        self.config["icon"] = ("[?]", [(0, 0, 0), (3, 0, 0), (0, 0, 0)])
+        self.config["query"] = (query, query_colormap)
+        self.lifecycle = {"mount": None, "unmount": None, "updates": []}
+        self.threadpool = ThreadPoolExecutor()
+        self.evt_stream = deque(maxlen=20)
+        self.evt_mutex = -1
+        self.end_signal = False
 
-    def _set_line(self, n):
+    def set_linenum(self, n):
         self.linenum = n
         return None
 
-    def _draw_query(self):
+    def _mount(self):
+        """Use to set up everything necessary for the Question.
+
+        Examples:
+          - check if file exists, if not download it
+          - see if API token is still valid, if not refresh it
+
+        Pass through self so that the function has access to Intermezzo
+
+        or
+
+        Use to dynamically update the parameters for render.
+
+        Examples:
+          - based on previous response, update the options for a MultiSelect
+          - read from a file for autocomplete options or regex for a TextInput
+
+        Pass through self so that the function has access to the Registry
+        """
+        f = self.lifecycle["mount"]
+        if f is None or not callable(f):
+            return
+        f(self)
+
+    def _render(self):
         x, y = 0, self.linenum
         icon, query = self.config["icon"], self.config["query"]
         prompt = f"{icon[0]} {query[0]}"
-        colormap = icon[1] + [(0,0,0)] + query[1] # [(0,0,0)] for the nbsp;
+        colormap = icon[1] + [(0, 0, 0)] + query[1]  # [(0,0,0)] for the nbsp;
         for ch, colors in zip(prompt, colormap):
             fg, attr, bg = colors
-            self.instance.set_cell(x, y, ch, fg|attr, bg)
+            self.cli.set_cell(x, y, ch, fg | attr, bg)
             x += 1
         return None
 
-    def _run(self):
-        pass
+    def _unmount(self):
+        """Use to perform clean up and logic jumps.
+
+        Examples:
+          - delete temporary files downloaded from before
+          - update the Question flow based on the response
+
+        Pass through self to that the function has access to the Registry
+        """
+        f = self.lifecycle["unmount"]
+        if f is None or not callable(f):
+            return
+        f(self)
 
     def setup(self):
         """Sets up the config attribute of the Question instance.
@@ -98,35 +146,72 @@ class Question(object):
         """
         pass
 
-    def on(self, stage, lookup):
-        cfg = self.config
-        hooks = cfg.get(stage, {})
-        hook = hooks.get(lookup, None)
-        result = {
-            "action": None,
-            "valid": True,
-            "error": ""
-        }
-        # Case 1: function
-        if callable(hook):
-            result["action"] = hook
-        # Case 2: regex
-        elif hook is None:
-            hook = hooks.get("regex", None)
-            if hook:
-                # TODO: regex support
-                # TODO: error handling
-                result["valid"] = True
-                result["error"] = ""
-                return result
-        # Case 3: boolean
-        elif hook is False:
-            result["valid"] = False
-            result["error"] = f"{lookup} is an invalid answer"
-        return result
+    def on_mount(self, fn):
+        if callable(fn):
+            self.lifecycle["mount"] = fn
 
-    def ask(self):
-        self._draw_query()
-        self._run()
-        self.instance.clear(0, 0)
-        return self.result
+    def on_unmount(self, fn):
+        if callable(fn):
+            self.lifecycle["unmount"] = fn
+
+    def on_update(self, *fns):
+        tasks = []
+        for fn in fns:
+            if callable(fn):
+                tasks.append(fn)
+        self.lifecycle["updates"] = tasks
+
+    async def _main(self):
+        """Execute the main processes for the field at hand.
+
+        Each widget/field will be implemented differently
+        """
+        pass
+
+    async def _poll_event(self):
+        evt_loop = self.loop
+        if evt_loop is not None:
+            e = await evt_loop.run_in_executor(None, self.cli.poll_event)
+            self.evt_stream.appendleft(e)
+
+    def pull_events(self, cache=5):
+        """Handler that returns the last cached key events from the deque.
+
+        Primarily to separate the event stream from usage of the event stream.
+        By returning the values from the latest event stream, each function that
+        might need events can operate without fear of mutation. Only grab the
+        latest cached events up to the last 20.
+        """
+        evts = self.evt_stream.copy()
+        length = len(evts)
+        if length == 0:
+            return []
+        if length < cache:
+            evt_log = [evts.popleft() for _ in range(length)]
+        elif length >= 20:
+            evt_log = [evts.popleft() for _ in range(20)]
+        else:
+            evt_log = [evts.popleft() for _ in range(cache)]
+        return evt_log
+
+    async def ask(self):
+        # set things up
+        self._mount()
+        self._render()
+
+        # set the update tasks to run async
+        def wrap_async(fn, idx):
+            future = self.threadpool.submit(fn, self, idx)
+            return asyncio.wrap_future(future)
+
+        tasks = []
+        for i, fn in enumerate(self.lifecycle["updates"]):
+            coroutine = wrap_async(fn, i)
+            tasks.append(coroutine)
+        self.lifecycle["updates"] = tasks
+
+        # run the main loop
+        await self._main()
+        self._unmount()
+        self.cli.clear(0, 0)
+        return None

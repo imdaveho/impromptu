@@ -11,20 +11,24 @@ If there is a need for more full featured implementation:
 
 registry = {}
 
+
 class MultiMethod(object):
     def __init__(self, name):
         self.name = name
         self.typemap = {}
+
     def __call__(self, *args):
-        types = tuple(arg.__class__ for arg in args) # a generator expression!
+        types = tuple(arg.__class__ for arg in args)  # a generator expression!
         function = self.typemap.get(types)
         if function is None:
             raise TypeError("no match")
         return function(*args)
+
     def register(self, types, function):
         if types in self.typemap:
             raise TypeError("duplicate registration")
         self.typemap[types] = function
+
 
 def dispatch(*types):
     def register(function):
@@ -36,6 +40,7 @@ def dispatch(*types):
         return mm
     return register
 
+
 @dispatch(str, list, tuple)
 def configure(newv, newcm, default):
     # format: (str, colormap)
@@ -44,20 +49,22 @@ def configure(newv, newcm, default):
         return default
     return (newv, newcm)
 
+
 @dispatch(str, tuple, tuple)
-def configure(newv, newtrp, default):
+def configure(newv, colors, default):
     # format: (str, (int, int[, int]))
     # eg: ("?", (3,0,0))
     # handle tuple2 vs. tuple3
-    if len(newtrp) == 3:
-        newcm = [newtrp for _ in newv]
+    if len(colors) == 3:
+        newcm = [colors for _ in newv]
         return (newv, newcm)
-    elif len(newtrp) == 2:
-        fg, bg = newtrp
+    elif len(colors) == 2:
+        fg, bg = colors
         newcm = [(fg, 0, bg) for _ in newv]
         return (newv, newcm)
     else:
         return default
+
 
 @dispatch(str, int, int, int, tuple)
 def configure(newv, fg, attr, bg, default):
@@ -66,12 +73,14 @@ def configure(newv, fg, attr, bg, default):
     newcm = [(fg, attr, bg) for _ in newv]
     return (newv, newcm)
 
+
 @dispatch(str, int, int, tuple)
 def configure(newv, fg, bg, default):
     # format: (str, int, int)
     # eg. ("?", 3, 0)
     newcm = [(fg, 0, bg) for _ in newv]
     return (newv, newcm)
+
 
 @dispatch(int, int, int, tuple)
 def configure(fg, attr, bg, default):
@@ -81,6 +90,7 @@ def configure(fg, attr, bg, default):
     newcm = [(fg, attr, bg) for _ in v]
     return (v, newcm)
 
+
 @dispatch(int, int, tuple)
 def configure(fg, bg, default):
     # format: (int, int)
@@ -89,6 +99,7 @@ def configure(fg, bg, default):
     newcm = [(fg, 0, bg) for _ in v]
     return (v, newcm)
 
+
 @dispatch(int, tuple)
 def configure(fg, default):
     # format: int
@@ -96,6 +107,7 @@ def configure(fg, default):
     if type(fg) is not int:
         return default
     return (fg, 0, 0)
+
 
 @dispatch(list, tuple)
 def configure(newcm, default):
@@ -106,6 +118,7 @@ def configure(newcm, default):
         return default
     return (v, newcm)
 
+
 @dispatch(str, tuple)
 def configure(newv, default):
     # format: (str)
@@ -115,16 +128,6 @@ def configure(newv, default):
         return default
     return (newv, cm)
 
-# @dispatch(dict, list)
-# def configure(newch, ch):
-#     # choices={...}
-#     return height
-
-@dispatch(dict, dict)
-def configure(newhook, default):
-    if type(newhook) is not dict:
-        return default
-    return newhook
 
 @dispatch(tuple, tuple)
 def configure(colors, default):
@@ -138,6 +141,7 @@ def configure(colors, default):
         return (fg, 0, bg)
     else:
         return default
+
 
 @dispatch(int, int)
 def configure(height, default):

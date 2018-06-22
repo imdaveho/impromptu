@@ -18,9 +18,10 @@ class ChoiceSelect(Question):
         else:
             self.choices = choices
             self.BOTTOM = len(choices) - 1
-        self.config["cursor"] = (" ›  ", [(0,0,0), (7,0,0), (0,0,0), (0,0,0)])
-        self.config["active"] = (7,0,0)
-        self.config["inactive"] = (0,0,0)
+        cursor_colormap = [(0, 0, 0), (7, 0, 0), (0, 0, 0), (0, 0, 0)]
+        self.config["cursor"] = (" ›  ", cursor_colormap)
+        self.config["active"] = (7, 0, 0)
+        self.config["inactive"] = (0, 0, 0)
 
     def _set_config(self, n, c):
         default = self.config[n]
@@ -30,12 +31,10 @@ class ChoiceSelect(Question):
             "active": (c, default),
             "inactive": (c, default),
             "height": (c, default),
-            "prehook": (c, default),
-            "posthook": (c, default)
         }.get(n, (*default, default))
 
     def setup(self, icon=False, cursor=False, choices=False,
-                    active=False, inactive=False, height=False, prehook=False, posthook=False):
+              active=False, inactive=False, height=False):
         params = locals()
         for name in params:
             config = params[name]
@@ -83,41 +82,41 @@ class ChoiceSelect(Question):
             c, cm = choice
             for ch, colors in zip(c, cm):
                 fg, attr, bg = colors
-                self.instance.set_cell(x, y, ch, fg|attr, bg)
+                self.cli.set_cell(x, y, ch, fg | attr, bg)
                 x += 1
             y += 1
             x = 0
         return None
 
     def _clear_widget(self):
-        w, h = self.instance.size()
+        w, h = self.cli.size()
         h = self.size
         for i in range(h):
             y = i + self.linenum + 1
             for x in range(w):
-                self.instance.set_cell(x, y, " ", 0, 0)
+                self.cli.set_cell(x, y, " ", 0, 0)
         return None
 
     def _redraw_all(self):
         self._clear_widget()
         self._draw_widget()
-        self.instance.hide_cursor()
-        self.instance.flush()
+        self.cli.hide_cursor()
+        self.cli.flush()
 
     def _run(self):
         # check minimum width and height
-        # w, h = self.instance.size()
+        # w, h = self.cli.size()
         # do the check here: TODO
         # draw the query and prompt
         self._redraw_all()
         # start the widget
         while True:
-            evt = self.instance.poll_event()
-            if evt["Type"] == self.instance.event("Key"):
-                k, c = evt["Key"], evt["Ch"]
-                if k == self.instance.key("Esc"):
+            evt = self.cli.poll_event()
+            if evt["Type"] == self.cli.event("Key"):
+                k = evt["Key"]
+                if k == self.cli.key("Esc"):
                     break
-                elif k == self.instance.key("ArrowUp"):
+                elif k == self.cli.key("ArrowUp"):
                     if self.cursor_index > self.PADDING:
                         self.cursor_index -= 1
                         self.choice_index -= 1
@@ -129,7 +128,7 @@ class ChoiceSelect(Question):
                             self.cursor_index -= 1
                         else:
                             self.cursor_index = 0
-                elif k == self.instance.key("ArrowDown"):
+                elif k == self.cli.key("ArrowDown"):
                     if self.cursor_index < self.PADDING:
                         self.cursor_index += 1
                         self.choice_index += 1
@@ -144,7 +143,7 @@ class ChoiceSelect(Question):
                 else:
                     pass
 
-            elif evt["Type"] == self.instance.event("Error"):
+            elif evt["Type"] == self.cli.event("Error"):
                 # EventError
                 raise(Exception(evt["Err"]))
             self._redraw_all()
@@ -157,7 +156,8 @@ class MultiSelect(ChoiceSelect):
         super().__init__(name, query, choices, size, default, color, colormap)
         self.widget = "multi-choice"
         self.choices = [(c, False) for c in choices]
-        self.config["cursor"] = (" › ", [(0,0,0), (7,0,0), (0,0,0)])
+        cursor_colormap = [(0, 0, 0), (7, 0, 0), (0, 0, 0)]
+        self.config["cursor"] = (" › ", cursor_colormap)
         self.config["selected"] = "► " if system() == "Windows" else "◉ "
         self.config["unselected"] = '○ '
 
@@ -171,8 +171,6 @@ class MultiSelect(ChoiceSelect):
             "active": (c, default),
             "inactive": (c, default),
             "height": (c, default),
-            "prehook": (c, default),
-            "posthook": (c, default)
         }.get(n, (*default, default))
 
     def setup(self, icon=False, cursor=False, selected=False,
@@ -195,7 +193,7 @@ class MultiSelect(ChoiceSelect):
         unselected = self.config["unselected"]
         choices = self._segment_choices()
         blanks = ''.join([" " for _ in cursor])
-        blanks_cm = [inactive for _ in blanks]
+        # blanks_cm = [inactive for _ in blanks]  # TODO: confirm usage
         render_list = []
         for i, c in enumerate(choices):
             render = None
@@ -223,12 +221,12 @@ class MultiSelect(ChoiceSelect):
         self._redraw_all()
         # start the widget
         while True:
-            evt = self.instance.poll_event()
-            if evt["Type"] == self.instance.event("Key"):
-                k, c = evt["Key"], evt["Ch"]
-                if k == self.instance.key("Esc"):
+            evt = self.cli.poll_event()
+            if evt["Type"] == self.cli.event("Key"):
+                k = evt["Key"]
+                if k == self.cli.key("Esc"):
                     break
-                elif k == self.instance.key("ArrowUp"):
+                elif k == self.cli.key("ArrowUp"):
                     if self.cursor_index > self.PADDING:
                         self.cursor_index -= 1
                         self.choice_index -= 1
@@ -240,7 +238,7 @@ class MultiSelect(ChoiceSelect):
                             self.cursor_index -= 1
                         else:
                             self.cursor_index = 0
-                elif k == self.instance.key("ArrowDown"):
+                elif k == self.cli.key("ArrowDown"):
                     if self.cursor_index < self.PADDING:
                         self.cursor_index += 1
                         self.choice_index += 1
@@ -252,19 +250,19 @@ class MultiSelect(ChoiceSelect):
                             self.cursor_index += 1
                         else:
                             self.choice_index = self.BOTTOM
-                elif k == self.instance.key("ArrowRight"):
+                elif k == self.cli.key("ArrowRight"):
                     choice, _ = self.choices[self.choice_index]
                     self.choices[self.choice_index] = (choice, True)
-                elif k == self.instance.key("ArrowLeft"):
+                elif k == self.cli.key("ArrowLeft"):
                     choice, _ = self.choices[self.choice_index]
                     self.choices[self.choice_index] = (choice, False)
-                elif k == self.instance.key("Space"):
+                elif k == self.cli.key("Space"):
                     choice, marked = self.choices[self.choice_index]
                     self.choices[self.choice_index] = (choice, not marked)
                 else:
                     pass
 
-            elif evt["Type"] == self.instance.event("Error"):
+            elif evt["Type"] == self.cli.event("Error"):
                 # EventError
                 raise(Exception(evt["Err"]))
             self._redraw_all()

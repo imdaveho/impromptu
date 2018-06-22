@@ -1,22 +1,55 @@
-from intermezzo import Intermezzo as mzo
 from impromptu import Impromptu
-from impromptu.fields import *
+from impromptu import fields
+
+
+def validation(obj, index):
+    # right now, the user must specify these params for mutex handling
+    # TODO: make a wrapper that simply allows the user to pass in a normally
+    # constructed function and have the API handle the mutex-ing
+    mzo = obj.cli
+    w, h = mzo.size()
+    # error_msg = "Error: This is an invalid answer"
+    # if obj._text == "hello":
+    #     obj.evt_mutex = index
+    error_msg = f"Value: {obj._text}"
+    if True:
+        for i in range(w):
+            mzo.set_cell(i, h-3, "_", mzo.color("Red"), 0)
+        for i, c in enumerate(error_msg):
+            mzo.set_cell(i, h-2, c, mzo.color("Red"), 0)
+        mzo.flush()
+        # evts = obj.pull_events()
+        # if not evts:
+        #     return
+        # evt = evts[0]
+        # if evt["Type"] == obj.cli.event("Key") \
+        #    and obj.evt_mutex == 0:
+        #     k, c = evt["Key"], evt["Ch"]
+        #     if k == obj.cli.key("Esc"):
+        #         obj.evt_mutex = -1
 
 
 if __name__ == "__main__":
     instance = Impromptu()
-    q1 = TextInput(name="name", query="What is your name?")
-    q2 = PasswordInput(name="email", query="What is your email?")
-    q2.setup(icon="<?>", prompt=(">>>>>>>", (6,0,0)))
+    q1 = fields.TextInput(name="name", query="What is your name?")
     instance.register(q1)
-    instance.register(q2)
-    q3 = MultiSelect(name="favorite", query="What is your favorite food?",
-                     choices=["Pizza", "Steak", "Spaghetti", "Fried Chicken", "Kale", "Burgers", "Lobster", "Ice Cream"])
-    q3.setup(posthook={
-        "Lobster": False
-    })
-    instance.register(q3)
+    q1.on_update(validation)
     instance.start()
+
+# if __name__ == "__main__":
+#     instance = Impromptu()
+#     q1 = TextInput(name="name", query="What is your name?")
+#     q2 = PasswordInput(name="email", query="What is your email?")
+#     q2.setup(icon="<?>", prompt=(">>>>>>>", (6,0,0)))
+#     instance.register(q1)
+#     instance.register(q2)
+#     q3 = MultiSelect(name="favorite", query="What is your favorite food?",
+#                      choices=["Pizza", "Steak", "Spaghetti", "Fried Chicken", "Kale", "Burgers", "Lobster", "Ice Cream"])
+#     q3.setup(posthook={
+#         "Lobster": False
+#     })
+#     instance.register(q3)
+#     instance.start()
 
 # if __name__ == "__main__":
 #     instance = Impromptu()
