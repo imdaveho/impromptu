@@ -23,19 +23,16 @@ class Impromptu(object):
         Args:
             question (Question): Adds the question to the internal collection.
         """
-        # question.instance = mzo
-        # question.registrar = self.registrar
-        # question.eventloop = loop
         self.registrar.put(question)
 
-    async def prompt(self, cli, loop, registry):
+    async def prompt(self, cli, loop, registrar):
         while True:
-            query = registry.get()
+            query = registrar.get()
             if query is None:
                 break
             query.cli = cli
             query.loop = loop
-            query.registry = registry
+            query.registrar = registrar  # TODO: rename please
             await query.ask()
 
     def start(self):
@@ -60,3 +57,7 @@ class Impromptu(object):
             mzo.close()
             evt_loop.close()
             # TODO: loop through the registry and print results
+            results = []
+            for q in self.registrar.registry.values():
+                results.append(q.get("data").result)
+            print(results)

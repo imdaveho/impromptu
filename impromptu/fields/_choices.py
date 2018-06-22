@@ -103,51 +103,49 @@ class ChoiceSelect(Question):
         self.cli.hide_cursor()
         self.cli.flush()
 
-    def _run(self):
-        # check minimum width and height
-        # w, h = self.cli.size()
-        # do the check here: TODO
-        # draw the query and prompt
-        self._redraw_all()
-        # start the widget
-        while True:
-            evt = self.cli.poll_event()
-            if evt["Type"] == self.cli.event("Key"):
-                k = evt["Key"]
-                if k == self.cli.key("Esc"):
-                    break
-                elif k == self.cli.key("ArrowUp"):
-                    if self.cursor_index > self.PADDING:
-                        self.cursor_index -= 1
-                        self.choice_index -= 1
-                    elif self.choice_index > self.PADDING:
-                        self.choice_index -= 1
-                    elif self.choice_index <= self.PADDING:
-                        if self.choice_index > 0:
-                            self.choice_index -= 1
-                            self.cursor_index -= 1
-                        else:
-                            self.cursor_index = 0
-                elif k == self.cli.key("ArrowDown"):
-                    if self.cursor_index < self.PADDING:
-                        self.cursor_index += 1
-                        self.choice_index += 1
-                    elif self.choice_index < self.BOTTOM - self.PADDING:
-                        self.choice_index += 1
-                    elif self.choice_index >= self.BOTTOM - self.PADDING:
-                        if self.choice_index < self.BOTTOM:
-                            self.choice_index += 1
-                            self.cursor_index += 1
-                        else:
-                            self.choice_index = self.BOTTOM
-                else:
-                    pass
-
-            elif evt["Type"] == self.cli.event("Error"):
-                # EventError
-                raise(Exception(evt["Err"]))
-            self._redraw_all()
+    async def _main(self):
+        await super()._main()
         self.result = self.choices[self.choice_index]
+
+    async def _handle_events(self):
+        evts = self.pull_events()
+        if not evts:
+            return
+        evt = evts[0]
+        if evt["Type"] == self.cli.event("Key"):
+            k = evt["Key"]
+            if k == self.cli.key("Esc"):
+                self.end_signal = True
+            elif k == self.cli.key("ArrowUp"):
+                if self.cursor_index > self.PADDING:
+                    self.cursor_index -= 1
+                    self.choice_index -= 1
+                elif self.choice_index > self.PADDING:
+                    self.choice_index -= 1
+                elif self.choice_index <= self.PADDING:
+                    if self.choice_index > 0:
+                        self.choice_index -= 1
+                        self.cursor_index -= 1
+                    else:
+                        self.cursor_index = 0
+            elif k == self.cli.key("ArrowDown"):
+                if self.cursor_index < self.PADDING:
+                    self.cursor_index += 1
+                    self.choice_index += 1
+                elif self.choice_index < self.BOTTOM - self.PADDING:
+                    self.choice_index += 1
+                elif self.choice_index >= self.BOTTOM - self.PADDING:
+                    if self.choice_index < self.BOTTOM:
+                        self.choice_index += 1
+                        self.cursor_index += 1
+                    else:
+                        self.choice_index = self.BOTTOM
+            else:
+                pass
+        elif evt["Type"] == self.cli.event("Error"):
+            # EventError
+            raise(Exception(evt["Err"]))
+        self._redraw_all()
 
 
 class MultiSelect(ChoiceSelect):
@@ -216,54 +214,56 @@ class MultiSelect(ChoiceSelect):
             render_list.append(render)
         return render_list
 
-    def _run(self):
-        # draw the query and prompt
-        self._redraw_all()
-        # start the widget
-        while True:
-            evt = self.cli.poll_event()
-            if evt["Type"] == self.cli.event("Key"):
-                k = evt["Key"]
-                if k == self.cli.key("Esc"):
-                    break
-                elif k == self.cli.key("ArrowUp"):
-                    if self.cursor_index > self.PADDING:
-                        self.cursor_index -= 1
-                        self.choice_index -= 1
-                    elif self.choice_index > self.PADDING:
-                        self.choice_index -= 1
-                    elif self.choice_index <= self.PADDING:
-                        if self.choice_index > 0:
-                            self.choice_index -= 1
-                            self.cursor_index -= 1
-                        else:
-                            self.cursor_index = 0
-                elif k == self.cli.key("ArrowDown"):
-                    if self.cursor_index < self.PADDING:
-                        self.cursor_index += 1
-                        self.choice_index += 1
-                    elif self.choice_index < self.BOTTOM - self.PADDING:
-                        self.choice_index += 1
-                    elif self.choice_index >= self.BOTTOM - self.PADDING:
-                        if self.choice_index < self.BOTTOM:
-                            self.choice_index += 1
-                            self.cursor_index += 1
-                        else:
-                            self.choice_index = self.BOTTOM
-                elif k == self.cli.key("ArrowRight"):
-                    choice, _ = self.choices[self.choice_index]
-                    self.choices[self.choice_index] = (choice, True)
-                elif k == self.cli.key("ArrowLeft"):
-                    choice, _ = self.choices[self.choice_index]
-                    self.choices[self.choice_index] = (choice, False)
-                elif k == self.cli.key("Space"):
-                    choice, marked = self.choices[self.choice_index]
-                    self.choices[self.choice_index] = (choice, not marked)
-                else:
-                    pass
-
-            elif evt["Type"] == self.cli.event("Error"):
-                # EventError
-                raise(Exception(evt["Err"]))
-            self._redraw_all()
+    async def _main(self):
+        await super()._main()
         self.result = [ch for ch, s in self.choices if s]
+
+    async def _handle_events(self):
+        evts = self.pull_events()
+        if not evts:
+            return
+        evt = evts[0]
+        if evt["Type"] == self.cli.event("Key"):
+            k = evt["Key"]
+            if k == self.cli.key("Esc"):
+                self.end_signal = True
+            elif k == self.cli.key("ArrowUp"):
+                if self.cursor_index > self.PADDING:
+                    self.cursor_index -= 1
+                    self.choice_index -= 1
+                elif self.choice_index > self.PADDING:
+                    self.choice_index -= 1
+                elif self.choice_index <= self.PADDING:
+                    if self.choice_index > 0:
+                        self.choice_index -= 1
+                        self.cursor_index -= 1
+                    else:
+                        self.cursor_index = 0
+            elif k == self.cli.key("ArrowDown"):
+                if self.cursor_index < self.PADDING:
+                    self.cursor_index += 1
+                    self.choice_index += 1
+                elif self.choice_index < self.BOTTOM - self.PADDING:
+                    self.choice_index += 1
+                elif self.choice_index >= self.BOTTOM - self.PADDING:
+                    if self.choice_index < self.BOTTOM:
+                        self.choice_index += 1
+                        self.cursor_index += 1
+                    else:
+                        self.choice_index = self.BOTTOM
+            elif k == self.cli.key("ArrowRight"):
+                choice, _ = self.choices[self.choice_index]
+                self.choices[self.choice_index] = (choice, True)
+            elif k == self.cli.key("ArrowLeft"):
+                choice, _ = self.choices[self.choice_index]
+                self.choices[self.choice_index] = (choice, False)
+            elif k == self.cli.key("Space"):
+                choice, marked = self.choices[self.choice_index]
+                self.choices[self.choice_index] = (choice, not marked)
+            else:
+                pass
+
+        elif evt["Type"] == self.cli.event("Error"):
+            # EventError
+            raise(Exception(evt["Err"]))
+        self._redraw_all()

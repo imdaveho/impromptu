@@ -68,7 +68,7 @@ class Question(object):
         # set variables pass through the main prompt loop
         self.cli = None
         self.loop = None
-        self.registry = None
+        self.registrar = None
         # set configuration variables
         self.widget = ""
         self.result = ""
@@ -159,12 +159,27 @@ class Question(object):
             if callable(fn):
                 self.lifecycle["updates"].append(fn)
 
+    def _redraw_all(self):
+        """Updates the render loop to account for any changes to the Widget"""
+        pass
+
     async def _main(self):
         """Execute the main processes for the field at hand.
 
         Each widget/field will be implemented differently
         """
-        pass
+        # check minimum width and height
+        # w, h = self.cli.size()
+        # do the check here: TODO
+        # draw the query and prompt
+        self._redraw_all()
+        while True:
+            if self.end_signal:
+                break
+            await self._poll_event()
+            await self._handle_events()
+            await self._handle_updates()
+            self._redraw_all()
 
     async def _poll_event(self):
         evt_loop = self.loop
@@ -193,10 +208,6 @@ class Question(object):
         return evt_log
 
     async def _handle_updates(self):
-        # tasks = []
-        # for i, fn in enumerate(self.lifecycle["updates"]):
-        #     tasks.append(self.loop.create_task(fn(self, i)))
-        # await asyncio.gather(*tasks)
         tasks = []
 
         def force_async(fn, i):

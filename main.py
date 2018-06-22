@@ -33,11 +33,51 @@ def validation(obj, index):
                         obj.cli.set_cell(x, y, " ", 0, 0)
 
 
+def logic_jump(obj):
+    r = obj.registrar
+    qs = {
+        "Food": q3a,
+        "Colors": q3b,
+        "Cities": q3c,
+        "Other": q3d
+    }
+    r.insert(qs.get(obj.result))
+
+
 if __name__ == "__main__":
     instance = Impromptu()
     q1 = fields.TextInput(name="name", query="What is your name?")
-    instance.register(q1)
     q1.on_update(validation)
+
+    q2 = fields.ChoiceSelect(name="favorite", query="Pick a topic:",
+                             choices=["Food", "Colors", "Cities", "Other"])
+
+    q2.on_unmount(logic_jump)
+
+    q3a = fields.MultiSelect(name="favorite_food",
+                             query="What are your favorite foods?",
+                             choices=["Pizza", "Steak", "Spaghetti",
+                                      "Fried Chicken", "Kale", "Burgers",
+                                      "Lobster", "Ice Cream"])
+
+    q3b = fields.MultiSelect(name="favorite_color",
+                             query="What are your favorite colors?",
+                             choices=["Blue", "Red", "Green",
+                                      "Purple", "Orange", "Yellow",
+                                      "Pink", "Brown"])
+
+    q3c = fields.MultiSelect(name="favorite_cities",
+                             query="What are your favorite cities?",
+                             choices=["Boston", "Philly", "New York",
+                                      "LA", "San Francisco", "Hoboken",
+                                      "Houston", "Chicago"])
+
+    q3d = fields.TextInput(name="favorite_other",
+                           query="What other thing is your favorite?")
+
+    questions = [q1, q2]
+    for q in questions:
+        instance.register(q)
     instance.start()
 
 # if __name__ == "__main__":

@@ -1,4 +1,3 @@
-import asyncio
 from ._base import Question
 from impromptu.utils.multimethod import configure
 
@@ -203,18 +202,7 @@ class TextInput(BaseInput):
         self.cli.flush()
 
     async def _main(self):
-        # check minimum width and height
-        # w, h = self.cli.size()
-        # do the check here: TODO
-        # draw the query and prompt
-        self._redraw_all()
-        while True:
-            if self.end_signal:
-                break
-            await self._poll_event()
-            await self._handle_events()
-            await self._handle_updates()
-            self._redraw_all()
+        await super()._main()
         self.result = self._text
 
     async def _handle_events(self):
@@ -265,7 +253,6 @@ class TextInput(BaseInput):
                 # if it is 0 when the EventType is 'Key'
                 if c != 0:
                     self._insert_rune(chr(c))
-
         elif evt["Type"] == self.cli.event("Error"):
             # EventError
             raise(Exception(evt["Err"]))
