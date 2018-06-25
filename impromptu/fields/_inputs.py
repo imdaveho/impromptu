@@ -1,5 +1,4 @@
 from ._base import Question
-from impromptu.utils.multimethod import configure
 
 
 class BaseInput(Question):
@@ -124,17 +123,21 @@ class TextInput(BaseInput):
             "prompt": (*c, default) if type(c) is tuple else (c, default),
             "height": (c, default),
             "inputs": (c, default),
-        }.get(n, (*default, default))
+            "result": (c, default),
+            "refresh": (c, default),
+        }.get(n, None)
 
-    def setup(self, icon=False, prompt=False, inputs=False, height=False):
-        params = locals()
-        for name in params:
-            config = params[name]
-            if not config or name == 'self':
-                continue
-            args = self._set_config(name, config)
-            self.config[name] = configure(*args)
-        return self
+    def setup(self, icon=False, prompt=False, inputs=False, height=False,
+              result=False, refresh=False):
+        kwargs = {
+            "icon": icon,
+            "prompt": prompt,
+            "height": height,
+            "inputs": inputs,
+            "result": result,
+            "refresh": refresh,
+        }
+        super().setup(**kwargs)
 
     def _draw_prompt(self):
         x, y = 0, self.linenum + 1  # one line below the query
@@ -200,6 +203,13 @@ class TextInput(BaseInput):
         x, y = len(prompt) + 1, self.linenum + 1
         self.cli.set_cursor(x+self._cursorX(), y)  # TODO: explain this line
         self.cli.flush()
+
+    def reset(self):
+        super().reset()
+        self._text = ""
+        self._visual_offset = 0
+        self._cursor_offset = 0
+        self._cursor_unicode_offset = 0
 
     async def _main(self):
         await super()._main()

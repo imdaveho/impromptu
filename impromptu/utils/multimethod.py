@@ -149,3 +149,11 @@ def configure(height, default):
     if type(height) is not int:
         return default
     return height
+
+
+@dispatch(bool, bool)
+def configure(refresh, default):
+    # case of refresh
+    if type(refresh) is not bool and type(default) is not bool:
+        return default
+    return refresh

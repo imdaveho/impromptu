@@ -1,6 +1,5 @@
 from platform import system
 from ._base import Question
-from impromptu.utils.multimethod import configure
 
 
 class ChoiceSelect(Question):
@@ -31,18 +30,22 @@ class ChoiceSelect(Question):
             "active": (c, default),
             "inactive": (c, default),
             "height": (c, default),
-        }.get(n, (*default, default))
+            "result": (c, default),
+            "refresh": (c, default),
+        }.get(n, None)
 
-    def setup(self, icon=False, cursor=False, choices=False,
-              active=False, inactive=False, height=False):
-        params = locals()
-        for name in params:
-            config = params[name]
-            if not config or name == 'self':
-                continue
-            args = self._set_config(name, config)
-            self.config[name] = configure(*args)
-        return self
+    def setup(self, icon=False, cursor=False, active=False, inactive=False,
+              height=False, result=False, refresh=False):
+        kwargs = {
+            "icon": icon,
+            "cursor": cursor,
+            "active": active,
+            "inactive": inactive,
+            "height": height,
+            "result": result,
+            "refresh": refresh,
+        }
+        super().setup(**kwargs)
 
     def _segment_choices(self):
         segment = []
@@ -102,6 +105,11 @@ class ChoiceSelect(Question):
         self._draw_widget()
         self.cli.hide_cursor()
         self.cli.flush()
+
+    def reset(self):
+        super().reset()
+        self.choice_index = 0
+        self.cursor_index = 0
 
     async def _main(self):
         await super()._main()
@@ -169,19 +177,29 @@ class MultiSelect(ChoiceSelect):
             "active": (c, default),
             "inactive": (c, default),
             "height": (c, default),
-        }.get(n, (*default, default))
+            "result": (c, default),
+            "refresh": (c, default),
+        }.get(n, None)
 
-    def setup(self, icon=False, cursor=False, selected=False,
-              unselected=False, active=False, inactive=False,
-              height=False, prehook=False, posthook=False):
-        params = locals()
-        for name in params:
-            config = params[name]
-            if not config or name == 'self':
-                continue
-            args = self._set_config(name, config)
-            self.config[name] = configure(*args)
-        return self
+    def setup(self, icon=False, cursor=False, selected=False, unselected=False,
+              active=False, inactive=False, height=False, result=False,
+              refresh=False):
+        kwargs = {
+            "icon": icon,
+            "cursor": cursor,
+            "selected": selected,
+            "unselected": unselected,
+            "active": active,
+            "inactive": inactive,
+            "height": height,
+            "result": result,
+            "refresh": refresh,
+        }
+        # have to call the base Question class
+        # since MultiSelect extends ChoiceSelect
+        # and ChoiceSelect has different kwargs
+        # than what the MultiSelect can accept
+        super(ChoiceSelect, self).setup(**kwargs)
 
     def _prepare_choices(self):
         active = self.config["active"]
@@ -213,6 +231,13 @@ class MultiSelect(ChoiceSelect):
                 render = (text, colormap)
             render_list.append(render)
         return render_list
+
+    def reset(self):
+        super().reset()
+        reset_choices = []
+        for c, _ in self.choices:
+            reset_choices.append(c, False)
+        self.choices = reset_choices
 
     async def _main(self):
         await super()._main()

@@ -67,9 +67,9 @@ class Registrar(object):
     def insert(self, *questions):
         if not questions:
             questions = []
-        subsequent = self.subsequent()
+        subsequent = self.registry[self.subsequent()]
         running = self.current()
-        previous = None
+        previous = self.registry[self.previous()]
         for i, q in enumerate(questions):
             unique_key = self._make_unique_key()
             this_question = {
@@ -78,7 +78,7 @@ class Registrar(object):
                 "prev": None,
                 "next": None
             }
-            if i == 0:
+            if i == 0 and len(questions) > 1:
                 # this is the first question inserted
                 # update self.cursor to this unique key so that
                 # running self.get() will result in this question
@@ -89,6 +89,12 @@ class Registrar(object):
                 self.cursor = unique_key
                 running["next"] = unique_key
                 this_question["prev"] = running["key"]
+            elif len(questions) == 1:
+                # this is the only question to be inserted
+                self.cursor = unique_key
+                running["next"] = unique_key
+                this_question["prev"] = running["key"]
+                this_question["next"] = subsequent["key"]
             elif i == len(questions) - 1:
                 # this is the last question to be inserted
                 # the prev is the previous question's key

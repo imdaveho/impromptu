@@ -1,6 +1,7 @@
 import asyncio
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
+from impromptu.utils.multimethod import configure
 
 
 class Question(object):
@@ -77,17 +78,15 @@ class Question(object):
         self.config["height"] = 2
         self.config["icon"] = ("[?]", [(0, 0, 0), (3, 0, 0), (0, 0, 0)])
         self.config["query"] = (query, query_colormap)
+        self.config["refresh"] = False
+        self.config["result"] = (4, 0, 0)
         self.lifecycle = {"mount": None, "unmount": None, "updates": []}
         self.threadpool = ThreadPoolExecutor()
         self.evt_stream = deque(maxlen=20)
         self.evt_mutex = -1
         self.end_signal = False
 
-    def set_linenum(self, n):
-        self.linenum = n
-        return None
-
-    def _mount(self):
+    def mount(self):
         """Use to set up everything necessary for the Question.
 
         Examples:
@@ -108,8 +107,8 @@ class Question(object):
         """
         f = self.lifecycle["mount"]
         if f is None or not callable(f):
-            return
-        f(self)
+            return True
+        return f(self)
 
     def _render(self):
         x, y = 0, self.linenum
@@ -122,7 +121,7 @@ class Question(object):
             x += 1
         return None
 
-    def _unmount(self):
+    def unmount(self):
         """Use to perform clean up and logic jumps.
 
         Examples:
@@ -133,10 +132,48 @@ class Question(object):
         """
         f = self.lifecycle["unmount"]
         if f is None or not callable(f):
-            return
-        f(self)
+            return True
+        return f(self)
 
-    def setup(self):
+    def close(self):
+        # render with result
+        x, y = 0, self.linenum
+        icon, query = self.config["icon"], self.config["query"]
+        result = self.result
+        if type(result) is list:
+            count = len(result)
+            result = f"[{count}] items"
+        if self.widget == "password":
+            count = len(result)
+            result = "".join(["*" for _ in range(count)])
+        result_cm = [self.config["result"] for _ in result]
+        prompt = f"{icon[0]} {query[0]}  {result}"
+        colormap = icon[1] + [(0, 0, 0)] + query[1]  # [(0,0,0)] for the nbsp;
+        colormap = colormap + [(0, 0, 0,), (0, 0, 0)] + result_cm
+        for ch, colors in zip(prompt, colormap):
+            fg, attr, bg = colors
+            self.cli.set_cell(x, y, ch, fg | attr, bg)
+            x += 1
+        # update height of next question
+        nq_key = self.registrar.subsequent()
+        if nq_key:
+            nq = self.registrar.registry[nq_key]["data"]
+            if self.config["refresh"]:
+                nq.linenum = 0
+                self.cli.clear(0,0)
+            else:
+                nq.linenum = self.config["height"] + self.linenum
+                w, h = self.cli.size()
+                for y in range(self.linenum + 1, h + 1):
+                    for x in range(w):
+                        self.cli.set_cell(x, y, " ", 0, 0)
+
+    def reset(self):
+        self.registrar.cursor = self.registrar.running
+        self.end_signal = False
+        self.result = ""
+
+    def setup(self, **kwargs):
         """Sets up the config attribute of the Question instance.
 
         Setup handles the config keys relevant to the Question type.
@@ -144,7 +181,14 @@ class Question(object):
         Single/MultiSelect types will configure cursor, active, selected,
         unselected, and custom colors for each specified choice.
         """
-        pass
+        for k, v in kwargs.items():
+            args = self._set_config(k, v)
+            if not v or args is None:
+                # skip the parameters that have not been passed
+                # for some reason, if _set_config returns None
+                continue
+            self.config[k] = configure(*args)
+        return self
 
     def on_mount(self, fn):
         if callable(fn):
@@ -214,16 +258,11 @@ class Question(object):
             """https://blog.konpat.me/python-turn-sync-functions-to-async/"""
             future = self.threadpool.submit(fn, self, i)
             return asyncio.wrap_future(future)
-
         for i, fn in enumerate(self.lifecycle["updates"]):
             tasks.append(force_async(fn, i))
-
-        await asyncio.gather(*tasks)
+        if tasks:
+            await asyncio.gather(*tasks)
 
     async def ask(self):
-        self._mount()
         self._render()
         await self._main()
-        self._unmount()
-        self.cli.clear(0, 0)
-        return None

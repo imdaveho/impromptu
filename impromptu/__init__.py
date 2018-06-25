@@ -27,13 +27,22 @@ class Impromptu(object):
 
     async def prompt(self, cli, loop, registrar):
         while True:
+            # prepare query variables
             query = registrar.get()
             if query is None:
                 break
             query.cli = cli
             query.loop = loop
             query.registrar = registrar  # TODO: rename please
-            await query.ask()
+            # handle query lifecycle
+            should_mount = query.mount()
+            if should_mount:
+                await query.ask()
+                did_unmount = query.unmount()
+                if did_unmount is False:
+                    query.reset()
+                else:
+                    query.close()
 
     def start(self):
         """

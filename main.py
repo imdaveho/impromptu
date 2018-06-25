@@ -41,24 +41,32 @@ def logic_jump(obj):
         "Cities": q3c,
         "Other": q3d
     }
-    r.insert(qs.get(obj.result))
+    if obj.result == "Colors":
+        return False
+    else:
+        r.insert(qs.get(obj.result))
 
 
 if __name__ == "__main__":
     instance = Impromptu()
-    q1 = fields.TextInput(name="name", query="What is your name?")
+    q1 = fields.PasswordInput(name="name", query="What is your name?")
+    # q1.on_mount(lambda _: False)
     q1.on_update(validation)
+    q1.setup(refresh=True)
 
     q2 = fields.ChoiceSelect(name="favorite", query="Pick a topic:",
                              choices=["Food", "Colors", "Cities", "Other"])
 
     q2.on_unmount(logic_jump)
+    q2.setup(result=6)
 
     q3a = fields.MultiSelect(name="favorite_food",
                              query="What are your favorite foods?",
                              choices=["Pizza", "Steak", "Spaghetti",
                                       "Fried Chicken", "Kale", "Burgers",
                                       "Lobster", "Ice Cream"])
+    # q3a.setup(reset_view=True)
+    q3a.setup(height=6)
 
     q3b = fields.MultiSelect(name="favorite_color",
                              query="What are your favorite colors?",
@@ -75,10 +83,17 @@ if __name__ == "__main__":
     q3d = fields.TextInput(name="favorite_other",
                            query="What other thing is your favorite?")
 
-    questions = [q1, q2]
+    q4 = fields.TextInput(name="password", query="What is your password?")
+
+    # questions = [q1, q1]
+    questions = [q1, q2, q4]
+    # questions = [q1, q2]
     for q in questions:
         instance.register(q)
     instance.start()
+
+    # for e in instance.registrar.registry.values():
+    #     print(e)
 
 # if __name__ == "__main__":
 #     instance = Impromptu()
