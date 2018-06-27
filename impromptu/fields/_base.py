@@ -1,5 +1,6 @@
 import asyncio
 from collections import deque
+from functools import partial
 from concurrent.futures import ThreadPoolExecutor
 from impromptu.utils.multimethod import configure
 
@@ -95,6 +96,16 @@ class Question(object):
         self.evt_mutex = -1
         self.end_signal = False
 
+    def _partial(self, f):
+        if f is None or not callable(f):
+            return True
+        if isinstance(f, partial):
+            try:
+                f = partial(f.func, self, *f.args, **f.keywords)
+            except Exception as e:
+                return True
+        return f
+
     def mount(self):
         """Use to set up everything necessary for the Question.
 
@@ -114,10 +125,10 @@ class Question(object):
 
         Pass through self so that the function has access to the Registry
         """
-        f = self.lifecycle["mount"]
-        if f is None or not callable(f):
-            return True
-        return f(self)
+        f = self._partial(self.lifecycle["mount"])
+        if isinstance(f, partial) and callable(f.func):
+            return f()
+        return f
 
     def _render(self):
         x, y = 0, self.linenum
@@ -139,10 +150,10 @@ class Question(object):
 
         Pass through self to that the function has access to the Registry
         """
-        f = self.lifecycle["unmount"]
-        if f is None or not callable(f):
-            return True
-        return f(self)
+        f = self._partial(self.lifecycle["unmount"])
+        if isinstance(f, partial) and callable(f.func):
+            return f()
+        return f
 
     def close(self):
         # render with result
@@ -199,18 +210,17 @@ class Question(object):
             self.config[k] = configure(*args)
         return self
 
-    def on_mount(self, fn):
+    def on_mount(self, fn, *args, **kwargs):
         if callable(fn):
-            self.lifecycle["mount"] = fn
+            self.lifecycle["mount"] = partial(fn, *args, **kwargs)
 
-    def on_unmount(self, fn):
+    def on_unmount(self, fn, *args, **kwargs):
         if callable(fn):
-            self.lifecycle["unmount"] = fn
+            self.lifecycle["unmount"] = partial(fn, *args, *kwargs)
 
-    def on_update(self, *fns):
-        for fn in fns:
-            if callable(fn):
-                self.lifecycle["updates"].append(fn)
+    def on_update(self, fn, *args, **kwargs):
+        if callable(fn):
+            self.lifecycle["updates"].append(partial(fn, *args, **kwargs))
 
     def _redraw_all(self):
         """Updates the render loop to account for any changes to the Widget"""
@@ -265,10 +275,16 @@ class Question(object):
 
         def force_async(fn):
             """https://blog.konpat.me/python-turn-sync-functions-to-async/"""
-            future = self.threadpool.submit(fn, self)
+            future = self.threadpool.submit(fn)
             return asyncio.wrap_future(future)
-        for i, fn in enumerate(self.lifecycle["updates"]):
-            tasks.append(force_async(fn))
+
+        for fn in self.lifecycle["updates"]:
+            f = self._partial(fn)
+            try:
+                if isinstance(f, partial) and callable(f.func):
+                    tasks.append(force_async(f))
+            except Exception:
+                continue
         if tasks:
             await asyncio.gather(*tasks)
 
