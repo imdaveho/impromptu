@@ -2,7 +2,7 @@ from impromptu import Impromptu
 from impromptu import fields
 
 
-def validation(obj, index):
+def validation(obj):
     # right now, the user must specify these params for mutex handling
     # TODO: make a wrapper that simply allows the user to pass in a normally
     # constructed function and have the API handle the mutex-ing
@@ -10,7 +10,7 @@ def validation(obj, index):
     w, h = mzo.size()
     error_msg = "Error: This is an invalid answer"
     if obj._text == "hello":
-        obj.evt_mutex = index
+        obj.evt_mutex = 998
     # error_msg = f"Value: {obj._text}"
     # if True:
         for i in range(w):
@@ -23,7 +23,7 @@ def validation(obj, index):
             return
         evt = evts[0]
         if evt["Type"] == obj.cli.event("Key") \
-           and obj.evt_mutex == index:
+           and obj.evt_mutex == 998:
             k, c = evt["Key"], evt["Ch"]
             if k == obj.cli.key("Esc"):
                 obj.evt_mutex = -1
@@ -55,7 +55,8 @@ if __name__ == "__main__":
     q1.setup(refresh=True)
 
     q2 = fields.ChoiceSelect(name="favorite", query="Pick a topic:",
-                             choices=["Food", "Colors", "Cities", "Other"])
+                             choices=["Food", "Colors", "Cities"])
+                             # choices=["Food", "Colors", "Cities", "Other"])
 
     q2.on_unmount(logic_jump)
     q2.setup(result=6)
@@ -76,9 +77,10 @@ if __name__ == "__main__":
 
     q3c = fields.MultiSelect(name="favorite_cities",
                              query="What are your favorite cities?",
-                             choices=["Boston", "Philly", "New York",
-                                      "LA", "San Francisco", "Hoboken",
-                                      "Houston", "Chicago"])
+                             choices=["NYC", "LA"])
+                             # choices=["Boston", "Philly", "New York",
+                             #          "LA", "San Francisco", "Hoboken",
+                             #          "Houston", "Chicago"])
 
     q3d = fields.TextInput(name="favorite_other",
                            query="What other thing is your favorite?")

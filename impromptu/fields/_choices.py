@@ -6,7 +6,6 @@ class ChoiceSelect(Question):
     def __init__(self, name, query, choices=None, size=7,
                  default="", color=None, colormap=None):
         super().__init__(name, query, default, color, colormap)
-        self.PADDING = size // 2
         self.widget = "choice"
         self.size = size
         self.choice_index = 0
@@ -17,6 +16,8 @@ class ChoiceSelect(Question):
         else:
             self.choices = choices
             self.BOTTOM = len(choices) - 1
+        self.overflow = len(choices) <= size
+        self.PADDING = 0 if self.overflow else size // 2
         cursor_colormap = [(0, 0, 0), (7, 0, 0), (0, 0, 0), (0, 0, 0)]
         self.config["cursor"] = (" ›  ", cursor_colormap)
         self.config["active"] = (7, 0, 0)
@@ -141,6 +142,8 @@ class ChoiceSelect(Question):
                     self.cursor_index += 1
                     self.choice_index += 1
                 elif self.choice_index < self.BOTTOM - self.PADDING:
+                    if self.overflow:
+                        self.cursor_index += 1
                     self.choice_index += 1
                 elif self.choice_index >= self.BOTTOM - self.PADDING:
                     if self.choice_index < self.BOTTOM:
@@ -269,6 +272,8 @@ class MultiSelect(ChoiceSelect):
                     self.cursor_index += 1
                     self.choice_index += 1
                 elif self.choice_index < self.BOTTOM - self.PADDING:
+                    if self.overflow:
+                        self.cursor_index += 1
                     self.choice_index += 1
                 elif self.choice_index >= self.BOTTOM - self.PADDING:
                     if self.choice_index < self.BOTTOM:
@@ -287,7 +292,6 @@ class MultiSelect(ChoiceSelect):
                 self.choices[self.choice_index] = (choice, not marked)
             else:
                 pass
-
         elif evt["Type"] == self.cli.event("Error"):
             # EventError
             raise(Exception(evt["Err"]))

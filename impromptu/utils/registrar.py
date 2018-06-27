@@ -67,9 +67,13 @@ class Registrar(object):
     def insert(self, *questions):
         if not questions:
             questions = []
-        subsequent = self.registry[self.subsequent()]
+        # previous is not guaranteed; eg. if you insert right
+        # after the _first_ Question in the registry
+        previous = self.registry.get(self.previous(), None)
         running = self.current()
-        previous = self.registry[self.previous()]
+        # subsequent is not guaranteed; eg. if you insert right
+        # after the _last_ Question in the registry
+        subsequent = self.registry.get(self.subsequent(), None)
         for i, q in enumerate(questions):
             unique_key = self._make_unique_key()
             this_question = {
@@ -94,21 +98,25 @@ class Registrar(object):
                 self.cursor = unique_key
                 running["next"] = unique_key
                 this_question["prev"] = running["key"]
-                this_question["next"] = subsequent["key"]
+                if subsequent is not None:
+                    this_question["next"] = subsequent["key"]
             elif i == len(questions) - 1:
                 # this is the last question to be inserted
                 # the prev is the previous question's key
                 # the next was the previously subsequent question
-                subsequent["prev"] = unique_key
-                this_question["prev"] = previous["key"]
-                this_question["next"] = subsequent["key"]
+                if previous is not None:
+                    this_question["prev"] = previous["key"]
+                if subsequent is not None:
+                    subsequent["prev"] = unique_key
+                    this_question["next"] = subsequent["key"]
             else:
                 # this is a question between the first and last
                 # this question's prev is the previous question's key
                 # this also resolves the previous question's next
                 # this question's next will be resolved in the next loop
-                previous["next"] = unique_key
-                this_question["prev"] = previous["key"]
+                if previous is not None:
+                    previous["next"] = unique_key
+                    this_question["prev"] = previous["key"]
             # this inserts it into the registry
             self.registry[unique_key] = this_question
             # update the variable that points to this dict so that in the

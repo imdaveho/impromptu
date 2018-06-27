@@ -32,17 +32,26 @@ class Question(object):
 
     Note:
         Config keys include:
-        * icon (tuple): The prefix added to each querystring. Default: [?], ? is Green.
+        * icon (tuple): The prefix added to each querystring. Default: [?],
+    ? is Green.
         * query (tuple): The querystring. Configured on init.
-        * prompt (tuple): Symbol for the start of a textbox. Default: », Red. (Text/Password only)
+        * prompt (tuple): Symbol for the start of a textbox. Default: », Red.
+    (Text/Password only)
 
-        * cursor (tuple): The symbol for selecting options in choice fields. Default: ›, Cyan. (Choice/Multi only)
-        * selected (string): Symbol for a selected choice state. Default: ◉ (*nix) | ► (win) (Multi only)
-        * unselected (string): Symbol for an open choice state. Default: ○ (Multi only)
-        * inputs (triplet): Color for the user inputted text. (Text/Password only)
-        * active (triplet): Color state for choice text when the cursor is on top of a choice. Default: Cyan. (Choice/Multi only)
-        * inactive (triplet): Color state for choice text when the cursor is on NOT top of a choice. Default: Default/White. (Choice/Multi only)
-        * height (int): Set the number of vertical space to occupy between Questions.
+        * cursor (tuple): The symbol for selecting options in choice fields.
+    Default: ›, Cyan. (Choice/Multi only)
+        * selected (string): Symbol for a selected choice state.
+    Default: ◉ (*nix) | ► (win) (Multi only)
+        * unselected (string): Symbol for an open choice state. Default: ○
+    (Multi only)
+        * inputs (triplet): Color for the user inputted text.
+    (Text/Password only)
+        * active (triplet): Color state for choice text when the cursor is on
+    top of a choice. Default: Cyan. (Choice/Multi only)
+        * inactive (triplet): Color state for choice text when the cursor is
+    on NOT top of a choice. Default: Default/White. (Choice/Multi only)
+        * height (int): Set the number of vertical space to occupy between
+    Questions.
 
     Todo:
         * validators (list(str)): maybe some kind of list of regexes?
@@ -160,7 +169,7 @@ class Question(object):
             nq = self.registrar.registry[nq_key]["data"]
             if self.config["refresh"]:
                 nq.linenum = 0
-                self.cli.clear(0,0)
+                self.cli.clear(0, 0)
             else:
                 nq.linenum = self.config["height"] + self.linenum
                 w, h = self.cli.size()
@@ -235,9 +244,9 @@ class Question(object):
         """Handler that returns the last cached key events from the deque.
 
         Primarily to separate the event stream from usage of the event stream.
-        By returning the values from the latest event stream, each function that
-        might need events can operate without fear of mutation. Only grab the
-        latest cached events up to the last 20.
+        By returning the values from the latest event stream, each function
+        that might need events can operate without fear of mutation. Only grab
+        the latest cached events up to the last 20.
         """
         evts = self.evt_stream.copy()
         length = len(evts)
@@ -254,12 +263,12 @@ class Question(object):
     async def _handle_updates(self):
         tasks = []
 
-        def force_async(fn, i):
+        def force_async(fn):
             """https://blog.konpat.me/python-turn-sync-functions-to-async/"""
-            future = self.threadpool.submit(fn, self, i)
+            future = self.threadpool.submit(fn, self)
             return asyncio.wrap_future(future)
         for i, fn in enumerate(self.lifecycle["updates"]):
-            tasks.append(force_async(fn, i))
+            tasks.append(force_async(fn))
         if tasks:
             await asyncio.gather(*tasks)
 
