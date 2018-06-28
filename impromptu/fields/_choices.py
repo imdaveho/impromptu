@@ -123,7 +123,7 @@ class ChoiceSelect(Question):
         evt = evts[0]
         if evt["Type"] == self.cli.event("Key"):
             k = evt["Key"]
-            if k == self.cli.key("Esc"):
+            if k == self.cli.key("Enter"):
                 self.end_signal = True
             elif k == self.cli.key("ArrowUp"):
                 if self.cursor_index > self.PADDING:
@@ -253,7 +253,7 @@ class MultiSelect(ChoiceSelect):
         evt = evts[0]
         if evt["Type"] == self.cli.event("Key"):
             k = evt["Key"]
-            if k == self.cli.key("Esc"):
+            if k == self.cli.key("Enter"):
                 self.end_signal = True
             elif k == self.cli.key("ArrowUp"):
                 if self.cursor_index > self.PADDING:

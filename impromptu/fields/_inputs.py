@@ -199,7 +199,8 @@ class TextInput(BaseInput):
         self._draw_widget()
         prompt, _ = self.config["prompt"]
         x, y = len(prompt) + 1, self.linenum + 1
-        self.cli.set_cursor(x+self._cursorX(), y)  # TODO: explain this line
+        # re-enable / re-position the cursor if it has been hidden / moved
+        self.cli.set_cursor(x+self._cursorX(), y)
         self.cli.flush()
 
     def reset(self):
@@ -220,7 +221,7 @@ class TextInput(BaseInput):
         evt = evts[0]
         if evt["Type"] == self.cli.event("Key") and self.evt_mutex == -1:
             k, c = evt["Key"], evt["Ch"]
-            if k == self.cli.key("Esc"):
+            if k == self.cli.key("Enter"):
                 self.end_signal = True
 
             elif (k == self.cli.key("CtrlB") or
