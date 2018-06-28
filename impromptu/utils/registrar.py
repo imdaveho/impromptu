@@ -105,6 +105,7 @@ class Registrar(object):
                 # the prev is the previous question's key
                 # the next was the previously subsequent question
                 if previous is not None:
+                    previous["next"] = unique_key
                     this_question["prev"] = previous["key"]
                 if subsequent is not None:
                     subsequent["prev"] = unique_key

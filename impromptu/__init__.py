@@ -65,8 +65,6 @@ class Impromptu(object):
         finally:
             mzo.close()
             evt_loop.close()
-            # TODO: loop through the registry and print results
-            results = []
-            for q in self.registrar.registry.values():
-                results.append(q.get("data").result)
-            print(results)
+            for o in self.registrar.registry.values():
+                q = o["data"]
+                self.responses[q.name] = q.result
