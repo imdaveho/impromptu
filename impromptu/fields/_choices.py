@@ -30,19 +30,19 @@ class ChoiceSelect(Question):
             "cursor": (*c, default) if type(c) is tuple else (c, default),
             "active": (c, default),
             "inactive": (c, default),
-            "height": (c, default),
+            "linespace": (c, default),
             "result": (c, default),
             "refresh": (c, default),
         }.get(n, None)
 
     def setup(self, icon=False, cursor=False, active=False, inactive=False,
-              height=False, result=False, refresh=False):
+              linespace=False, result=False, refresh=False):
         kwargs = {
             "icon": icon,
             "cursor": cursor,
             "active": active,
             "inactive": inactive,
-            "height": height,
+            "linespace": linespace,
             "result": result,
             "refresh": refresh,
         }
@@ -179,13 +179,13 @@ class MultiSelect(ChoiceSelect):
             "unselected": (c, default),
             "active": (c, default),
             "inactive": (c, default),
-            "height": (c, default),
+            "linespace": (c, default),
             "result": (c, default),
             "refresh": (c, default),
         }.get(n, None)
 
     def setup(self, icon=False, cursor=False, selected=False, unselected=False,
-              active=False, inactive=False, height=False, result=False,
+              active=False, inactive=False, linespace=False, result=False,
               refresh=False):
         kwargs = {
             "icon": icon,
@@ -194,7 +194,7 @@ class MultiSelect(ChoiceSelect):
             "unselected": unselected,
             "active": active,
             "inactive": inactive,
-            "height": height,
+            "linespace": linespace,
             "result": result,
             "refresh": refresh,
         }

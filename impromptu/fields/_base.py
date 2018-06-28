@@ -51,14 +51,11 @@ class Question(object):
     top of a choice. Default: Cyan. (Choice/Multi only)
         * inactive (triplet): Color state for choice text when the cursor is
     on NOT top of a choice. Default: Default/White. (Choice/Multi only)
-        * height (int): Set the number of vertical space to occupy between
+        * linespace (int): Set the number of vertical space to occupy between
     Questions.
 
     Todo:
-        * validators (list(str)): maybe some kind of list of regexes?
-        * jump logic
         * loaders and spinners
-        * function handlers (maybe to execute xyz based on response)
         * tooltips/help messages
         * autocomplete
 
@@ -85,7 +82,7 @@ class Question(object):
         self.result = ""
         self.linenum = 0
         self.config = {}
-        self.config["height"] = 2
+        self.config["linespace"] = 2
         self.config["icon"] = ("[?]", [(0, 0, 0), (3, 0, 0), (0, 0, 0)])
         self.config["query"] = (query, query_colormap)
         self.config["refresh"] = False
@@ -174,7 +171,7 @@ class Question(object):
             fg, attr, bg = colors
             self.cli.set_cell(x, y, ch, fg | attr, bg)
             x += 1
-        # update height of next question
+        # update line spacing of next question
         nq_key = self.registrar.subsequent()
         if nq_key:
             nq = self.registrar.registry[nq_key]["data"]
@@ -182,7 +179,7 @@ class Question(object):
                 nq.linenum = 0
                 self.cli.clear(0, 0)
             else:
-                nq.linenum = self.config["height"] + self.linenum
+                nq.linenum = self.config["linespace"] + self.linenum
                 w, h = self.cli.size()
                 for y in range(self.linenum + 1, h + 1):
                     for x in range(w):

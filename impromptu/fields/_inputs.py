@@ -5,15 +5,15 @@ class BaseInput(Question):
     """
     Base class that includes keyboard input helper functions.
     """
-    def __init__(self, name, query, default="",
+    def __init__(self, name, query, default="", width=120,
                  color=None, colormap=None):
         super().__init__(name, query, default, color, colormap)
         self.TABSTOP = 8
         self.PADDING = 5
-        self.WIDTH = 60
         self._visual_offset = 0
         self._cursor_offset = 0
         self._cursor_unicode_offset = 0
+        self.config["width"] = width
         self._text = ""
 
     def _rune_advance(self, r, pos):
@@ -93,14 +93,11 @@ class BaseInput(Question):
         max_h_threshold = int((width-1)/2)
         if ht > max_h_threshold:
             ht = max_h_threshold
-
         threshold = width - 1
         if self._visual_offset != 0:
             threshold = width - ht
-
         if (self._cursor_offset - self._visual_offset) >= threshold:
             self._visual_offset = self._cursor_offset + (ht - width + 1)
-
         if self._visual_offset != 0 and (self._cursor_offset -
                                          self._visual_offset) < ht:
             self._visual_offset = self._cursor_offset - ht
@@ -109,9 +106,9 @@ class BaseInput(Question):
 
 
 class TextInput(BaseInput):
-    def __init__(self, name, query, default="",
+    def __init__(self, name, query, default="", width=120,
                  color=None, colormap=None):
-        super().__init__(name, query, default, color, colormap)
+        super().__init__(name, query, default, width, color, colormap)
         self.widget = "text"
         self.config["prompt"] = (" » ", [(0, 0, 0), (2, 0, 0), (0, 0, 0)])
         self.config["inputs"] = (0, 0, 0)
@@ -121,18 +118,20 @@ class TextInput(BaseInput):
         return {
             "icon": (*c, default) if type(c) is tuple else (c, default),
             "prompt": (*c, default) if type(c) is tuple else (c, default),
-            "height": (c, default),
+            "linespace": (c, default),
+            "width": (c, default),
             "inputs": (c, default),
             "result": (c, default),
             "refresh": (c, default),
         }.get(n, None)
 
-    def setup(self, icon=False, prompt=False, inputs=False, height=False,
-              result=False, refresh=False):
+    def setup(self, icon=False, prompt=False, inputs=False, linespace=False,
+              width=False, result=False, refresh=False):
         kwargs = {
             "icon": icon,
             "prompt": prompt,
-            "height": height,
+            "linespace": linespace,
+            "width": width,
             "inputs": inputs,
             "result": result,
             "refresh": refresh,
@@ -151,7 +150,7 @@ class TextInput(BaseInput):
     def _draw_widget(self):
         prompt, _ = self.config["prompt"]
         fg, attr, bg = self.config["inputs"]
-        w, h = self.WIDTH, 1
+        w, h = self.config["width"], 1
         self._adjust_voffset(w)
         t = self._text
         lx, tabstop = 0, 0
@@ -181,14 +180,13 @@ class TextInput(BaseInput):
                 lx += self.cli.rune_width(rune)
             # next:
             t = t[len(rune):]
-
         if self._visual_offset != 0:
             self.cli.set_cell(x, y, '←', fg | attr, bg)
         return None
 
     def _clear_widget(self):
         w, h = self.cli.size()
-        h = self.config["height"]
+        h = self.config["linespace"]
         for i in range(h):
             y = i + self.linenum + 1
             for x in range(w):
@@ -270,7 +268,7 @@ class TextInput(BaseInput):
 
 
 class PasswordInput(TextInput):
-    def __init__(self, name, query, default="",
+    def __init__(self, name, query, default="", width=120,
                  color=None, colormap=None):
-        super().__init__(name, query, default, color, colormap)
+        super().__init__(name, query, default, width, color, colormap)
         self.widget = "password"
