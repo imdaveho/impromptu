@@ -67,7 +67,7 @@ if __name__ == "__main__":
                                       "Fried Chicken", "Kale", "Burgers",
                                       "Lobster", "Ice Cream"])
     # q3a.setup(reset_view=True)
-    q3a.setup(height=6)
+    q3a.setup(linespace=6)
 
     q3b = fields.MultiSelect(name="favorite_color",
                              query="What are your favorite colors?",
@@ -85,7 +85,9 @@ if __name__ == "__main__":
     q3d = fields.TextInput(name="favorite_other",
                            query="What other thing is your favorite?")
 
-    q4 = fields.TextInput(name="password", query="What is your password?")
+    m = "Qui ab distinctio voluptatum eveniet aut assumenda temporibus. Error maxime quo enim commodi ex dolores velit laboriosam. Facere eaque magnam magnam. Ipsam ea ut rem distinctio nihil commodi. Placeat fuga corporis corrupti qui officiis excepturi et qui. Nemo voluptatem est asperiores sed.…"
+    q4 = fields.StaticMessage(name="msg", query="A word from our sponsor:",
+                              message=m)
 
     # questions = [q1, q1]
     questions = [q1, q2, q4]

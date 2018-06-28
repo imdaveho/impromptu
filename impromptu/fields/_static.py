@@ -8,9 +8,16 @@ class StaticMessage(Question):
         self.widget = "static"
         self.message = message
         self.config["icon"] = ("[!]", [(0, 0, 0), (4, 0, 0), (0, 0, 0)])
-        self.config["prompt"] = (" ▪ ", [(0, 0, 0), (7, 0, 0), (0, 0, 0)])
+        self.config["prompt"] = (" » ", [(0, 0, 0), (4, 0, 0), (0, 0, 0)])
         self.config["width"] = width
-        self.config["message"] = (0, 0, 0)
+        self.config["message"] = (4, 0, 0)
+        if color is None:
+            color = (4, 0, 0)
+        if colormap is None:
+            query_colormap = [color for _ in query]
+        else:
+            query_colormap = colormap
+        self.config["query"] = (query, query_colormap)
 
     def _set_config(self, n, c):
         default = self.config[n]
@@ -44,7 +51,7 @@ class StaticMessage(Question):
         return None
 
     def _draw_message(self):
-        x = len(self.config["prompt"][0])
+        x = len(self.config["prompt"][0]) + 1
         y = self.linenum + 1
         w = self.config["width"]
         length = len(self.message)
@@ -53,11 +60,13 @@ class StaticMessage(Question):
             segment = self.message[i:i+w]
             segments.append(
                 (segment, [self.config["message"] for _ in segment]))
-        for i, s in enumerate(segments):
+        for dy, s in enumerate(segments):
             segment, colormap = s
+            dx = 0
             for ch, colors in zip(segment, colormap):
                 fg, attr, bg = colors
-                self.cli.set_cell(x, y + i, ch, fg | attr, bg)
+                self.cli.set_cell(x + dx, y + dy, ch, fg | attr, bg)
+                dx += 1
         return None
 
     def _redraw_all(self):
