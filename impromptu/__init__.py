@@ -41,6 +41,7 @@ class Impromptu(object):
                 did_unmount = query.unmount()
                 if did_unmount is False:
                     query.reset()
+                    query.restart()
                 else:
                     query.close()
 

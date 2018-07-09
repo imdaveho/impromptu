@@ -94,6 +94,9 @@ class Question(object):
         self.end_signal = False
 
     def _partial(self, f):
+        # TODO: update to account for self-less functions passed in or
+        # situations where self may not be the first argument in the list...
+        # https://stackoverflow.com/questions/42352703/get-names-of-positional-arguments-from-functions-signature
         if f is None or not callable(f):
             return True
         if isinstance(f, partial):
@@ -186,9 +189,11 @@ class Question(object):
                         self.cli.set_cell(x, y, " ", 0, 0)
 
     def reset(self):
+        self.result = ""
+
+    def restart(self):
         self.registrar.cursor = self.registrar.running
         self.end_signal = False
-        self.result = ""
 
     def setup(self, **kwargs):
         """Sets up the config attribute of the Question instance.
