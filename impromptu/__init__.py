@@ -36,7 +36,7 @@ class Impromptu(object):
             query.registrar = registrar  # TODO: rename please
             # handle query lifecycle
             should_mount = query.mount()
-            if should_mount:
+            if should_mount is not False:
                 await query.ask()
                 did_unmount = query.unmount()
                 if did_unmount is False:
