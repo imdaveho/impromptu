@@ -26,6 +26,7 @@ def validation(obj):
             mzo.flush()
     else:
         obj.temp = False
+    return None
 
 
 def logic_jump(obj):

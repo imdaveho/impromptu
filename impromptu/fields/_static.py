@@ -84,3 +84,4 @@ class StaticMessage(Question):
             k = evt["Key"]
             if k == self.cli.key("Enter"):
                 self.end_signal = True
+        return None

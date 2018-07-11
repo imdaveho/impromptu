@@ -115,6 +115,7 @@ class ChoiceSelect(Question):
     async def _main(self):
         await super()._main()
         self.result = self.choices[self.choice_index]
+        return None
 
     async def _handle_events(self):
         evts = self.pull_events()
@@ -157,6 +158,7 @@ class ChoiceSelect(Question):
             # EventError
             raise(Exception(evt["Err"]))
         self._redraw_all()
+        return None
 
 
 class MultiSelect(ChoiceSelect):
@@ -296,3 +298,4 @@ class MultiSelect(ChoiceSelect):
             # EventError
             raise(Exception(evt["Err"]))
         self._redraw_all()
+        return None

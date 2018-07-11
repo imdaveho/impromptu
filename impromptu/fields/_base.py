@@ -304,6 +304,7 @@ class Question(object):
             if self.end_signal or not updates:
                 break
             await asyncio.wait(updates)
+        return None
 
     async def ask(self):
         self._render()

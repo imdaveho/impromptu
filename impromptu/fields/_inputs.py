@@ -213,6 +213,7 @@ class TextInput(BaseInput):
     async def _main(self):
         await super()._main()
         self.result = self._text
+        return None
 
     async def _handle_events(self):
         evts = self.pull_events()
@@ -266,6 +267,7 @@ class TextInput(BaseInput):
             # EventError
             raise(Exception(evt["Err"]))
         self._redraw_all()
+        return None
 
 
 class PasswordInput(TextInput):
