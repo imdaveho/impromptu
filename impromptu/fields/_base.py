@@ -228,6 +228,13 @@ class Question(object):
         """Updates the render loop to account for any changes to the Widget"""
         pass
 
+    def clear_below(self):
+        w, h = self.cli.size()
+        for i in range(h):
+            y = i + self.linenum + 1
+            for x in range(w):
+                self.cli.set_cell(x, y, " ", 0, 0)
+
     async def _main(self):
         """Execute the main processes for the field at hand.
 
@@ -243,14 +250,15 @@ class Question(object):
                 break
             await self._poll_event()
             await self._handle_events()
-            await self._handle_updates()
             self._redraw_all()
+        return None
 
     async def _poll_event(self):
         evt_loop = self.loop
         if evt_loop is not None:
+            # TODO: consider making mzo.poll_event_nb
             e = await evt_loop.run_in_executor(None, self.cli.poll_event)
-            self.evt_stream.appendleft(e)
+            self.evt_stream.append(e)
 
     def pull_events(self, cache=5):
         """Handler that returns the last cached key events from the deque.
@@ -261,6 +269,7 @@ class Question(object):
         the latest cached events up to the last 20.
         """
         evts = self.evt_stream.copy()
+        evts.reverse()
         length = len(evts)
         if length == 0:
             return []
@@ -272,10 +281,10 @@ class Question(object):
             evt_log = [evts.popleft() for _ in range(cache)]
         return evt_log
 
-    async def _handle_updates(self):
-        tasks = []
+    def _get_updates(self):
+        updates = []
 
-        def force_async(fn):
+        def _wrap_async(fn):
             """https://blog.konpat.me/python-turn-sync-functions-to-async/"""
             future = self.threadpool.submit(fn)
             return asyncio.wrap_future(future)
@@ -284,12 +293,21 @@ class Question(object):
             f = self._partial(fn)
             try:
                 if isinstance(f, partial) and callable(f.func):
-                    tasks.append(force_async(f))
+                    updates.append(_wrap_async(f))
             except Exception:
                 continue
-        if tasks:
-            await asyncio.gather(*tasks)
+        return updates
+
+    async def _update(self):
+        while True:
+            updates = self._get_updates()
+            if self.end_signal or not updates:
+                break
+            await asyncio.wait(updates)
 
     async def ask(self):
         self._render()
-        await self._main()
+        await asyncio.wait([
+            self._main(),
+            self._update()
+        ])

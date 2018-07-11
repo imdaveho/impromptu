@@ -37,6 +37,7 @@ class Impromptu(object):
             # handle query lifecycle
             should_mount = query.mount()
             if should_mount is not False:
+                query.clear_below()
                 await query.ask()
                 did_unmount = query.unmount()
                 if did_unmount is False:

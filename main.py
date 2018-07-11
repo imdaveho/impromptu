@@ -1,3 +1,4 @@
+import time
 from impromptu import Impromptu
 from impromptu import fields
 
@@ -10,27 +11,21 @@ def validation(obj):
     w, h = mzo.size()
     error_msg = "Error: This is an invalid answer"
     if obj._text == "hello":
-        obj.evt_mutex = 998
-    # error_msg = f"Value: {obj._text}"
-    # if True:
-        for i in range(w):
-            mzo.set_cell(i, h-3, "_", mzo.color("Red"), 0)
-        for i, c in enumerate(error_msg):
-            mzo.set_cell(i, h-2, c, mzo.color("Red"), 0)
-        mzo.flush()
-        evts = obj.pull_events()
-        if not evts:
-            return
-        evt = evts[0]
-        if evt["Type"] == obj.cli.event("Key") \
-           and obj.evt_mutex == 998:
-            k, c = evt["Key"], evt["Ch"]
-            if k == obj.cli.key("Esc"):
-                obj.evt_mutex = -1
-                for i in range(h-3, h):
-                    y = i
-                    for x in range(w):
-                        obj.cli.set_cell(x, y, " ", 0, 0)
+        if not obj.temp:
+            obj.temp = True
+            for i in range(w):
+                mzo.set_cell(i, h-3, "_", mzo.color("Red"), 0)
+            for i, c in enumerate(error_msg):
+                mzo.set_cell(i, h-2, c, mzo.color("Red"), 0)
+            mzo.flush()
+            time.sleep(1)
+            for i in range(h-3, h):
+                y = i
+                for x in range(w):
+                    mzo.set_cell(x, y, " ", 0, 0)
+            mzo.flush()
+    else:
+        obj.temp = False
 
 
 def logic_jump(obj):
