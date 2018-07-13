@@ -244,21 +244,17 @@ class Question(object):
         # w, h = self.cli.size()
         # do the check here: TODO
         # draw the query and prompt
+        self._render()
         self._redraw_all()
         while True:
             if self.end_signal:
                 break
-            await self._poll_event()
-            await self._handle_events()
+            await asyncio.wait([
+                self._foreground(),
+                self._background()
+            ])
             self._redraw_all()
         return None
-
-    async def _poll_event(self):
-        evt_loop = self.loop
-        if evt_loop is not None:
-            # TODO: consider making mzo.poll_event_nb
-            e = await evt_loop.run_in_executor(None, self.cli.poll_event)
-            self.evt_stream.append(e)
 
     def pull_events(self, cache=5):
         """Handler that returns the last cached key events from the deque.
@@ -269,10 +265,9 @@ class Question(object):
         the latest cached events up to the last 20.
         """
         evts = self.evt_stream.copy()
-        evts.reverse()
         length = len(evts)
         if length == 0:
-            return []
+            return [{"Type": "Blank"}]
         if length < cache:
             evt_log = [evts.popleft() for _ in range(length)]
         elif length >= 20:
@@ -281,7 +276,7 @@ class Question(object):
             evt_log = [evts.popleft() for _ in range(cache)]
         return evt_log
 
-    def _get_updates(self):
+    def _update_processes(self):
         updates = []
 
         def _wrap_async(fn):
@@ -294,21 +289,26 @@ class Question(object):
             try:
                 if isinstance(f, partial) and callable(f.func):
                     updates.append(_wrap_async(f))
-            except Exception:
-                continue
+            except Exception as err:
+                raise(Exception(err))
         return updates
 
-    async def _update(self):
-        while True:
-            updates = self._get_updates()
-            if self.end_signal or not updates:
-                break
-            await asyncio.wait(updates)
+    async def _foreground(self):
+        evt_loop = self.loop
+        if evt_loop is not None:
+            # TODO: consider making mzo.poll_event_nb
+            e = await evt_loop.run_in_executor(None, self.cli.poll_event)
+            self.evt_stream.appendleft(e)
+        await self._handle_events()
+        return None
+
+    async def _background(self):
+        update_processes = self._update_processes()
+        if not update_processes:
+            self.end_signal = True
+            return None
+        await asyncio.wait(update_processes)
         return None
 
     async def ask(self):
-        self._render()
-        await asyncio.wait([
-            self._main(),
-            self._update()
-        ])
+        await self._main()

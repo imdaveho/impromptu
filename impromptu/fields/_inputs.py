@@ -216,10 +216,7 @@ class TextInput(BaseInput):
         return None
 
     async def _handle_events(self):
-        evts = self.pull_events()
-        if not evts:
-            return
-        evt = evts[0]
+        evt = self.pull_events()[0]
         if evt["Type"] == self.cli.event("Key") and self.evt_mutex == -1:
             k, c = evt["Key"], evt["Ch"]
             if k == self.cli.key("Enter"):
@@ -266,7 +263,6 @@ class TextInput(BaseInput):
         elif evt["Type"] == self.cli.event("Error"):
             # EventError
             raise(Exception(evt["Err"]))
-        self._redraw_all()
         return None
 
 

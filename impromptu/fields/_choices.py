@@ -118,10 +118,7 @@ class ChoiceSelect(Question):
         return None
 
     async def _handle_events(self):
-        evts = self.pull_events()
-        if not evts:
-            return
-        evt = evts[0]
+        evt = self.pull_events()[0]
         if evt["Type"] == self.cli.event("Key"):
             k = evt["Key"]
             if k == self.cli.key("Enter"):
@@ -157,7 +154,6 @@ class ChoiceSelect(Question):
         elif evt["Type"] == self.cli.event("Error"):
             # EventError
             raise(Exception(evt["Err"]))
-        self._redraw_all()
         return None
 
 
@@ -249,10 +245,7 @@ class MultiSelect(ChoiceSelect):
         self.result = [ch for ch, s in self.choices if s]
 
     async def _handle_events(self):
-        evts = self.pull_events()
-        if not evts:
-            return
-        evt = evts[0]
+        evt = self.pull_events()[0]
         if evt["Type"] == self.cli.event("Key"):
             k = evt["Key"]
             if k == self.cli.key("Enter"):
@@ -297,5 +290,4 @@ class MultiSelect(ChoiceSelect):
         elif evt["Type"] == self.cli.event("Error"):
             # EventError
             raise(Exception(evt["Err"]))
-        self._redraw_all()
         return None
