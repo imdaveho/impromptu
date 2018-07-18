@@ -6,6 +6,9 @@ class ChoiceSelect(Question):
     def __init__(self, name, query, choices=None, size=7,
                  default="", color=None, colormap=None):
         super().__init__(name, query, default, color, colormap)
+        self._keys_in_use = [
+            "Enter", "ArrowUp", "ArrowDown"
+        ]
         self.widget = "choice"
         self.size = size
         self.choice_index = 0
@@ -112,12 +115,12 @@ class ChoiceSelect(Question):
         self.choice_index = 0
         self.cursor_index = 0
 
-    async def _main(self):
-        await super()._main()
+    def _main(self):
+        super()._main()
         self.result = self.choices[self.choice_index]
         return None
 
-    async def _handle_events(self):
+    def _handle_events(self):
         evt = self.pull_events()[0]
         if evt["Type"] == self.cli.event("Key"):
             k = evt["Key"]
@@ -161,6 +164,10 @@ class MultiSelect(ChoiceSelect):
     def __init__(self, name, query, choices=None, size=7,
                  default="", color=None, colormap=None):
         super().__init__(name, query, choices, size, default, color, colormap)
+        self._keys_in_use = [
+            "Enter", "ArrowLeft", "ArrowUp",
+            "ArrowRight", "ArrowDown", "Space",
+        ]
         self.widget = "multi-choice"
         self.choices = [(c, False) for c in choices]
         cursor_colormap = [(0, 0, 0), (7, 0, 0), (0, 0, 0)]
@@ -240,11 +247,11 @@ class MultiSelect(ChoiceSelect):
             reset_choices.append(c, False)
         self.choices = reset_choices
 
-    async def _main(self):
-        await super()._main()
+    def _main(self):
+        super()._main()
         self.result = [ch for ch, s in self.choices if s]
 
-    async def _handle_events(self):
+    def _handle_events(self):
         evt = self.pull_events()[0]
         if evt["Type"] == self.cli.event("Key"):
             k = evt["Key"]

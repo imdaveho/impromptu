@@ -5,6 +5,7 @@ class StaticMessage(Question):
     def __init__(self, name, query, message="", default="",
                  width=120, color=None, colormap=None):
         super().__init__(name, query, default, color, colormap)
+        self._keys_in_use = ["Enter"]
         self.widget = "static"
         self.message = message
         self.config["icon"] = ("[!]", [(0, 0, 0), (4, 0, 0), (0, 0, 0)])
@@ -75,10 +76,13 @@ class StaticMessage(Question):
         self._draw_message()
         self.cli.flush()
 
-    async def _handle_events(self):
+    def _handle_events(self):
         evt = self.pull_events()[0]
         if evt["Type"] == self.cli.event("Key") and self.evt_mutex == -1:
             k = evt["Key"]
             if k == self.cli.key("Enter"):
                 self.end_signal = True
+        elif evt["Type"] == self.cli.event("Error"):
+            # EventError
+            raise(Exception(evt["Err"]))
         return None

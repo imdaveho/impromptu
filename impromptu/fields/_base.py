@@ -1,7 +1,8 @@
-import asyncio
-from collections import deque
+import threading
+from functools import wraps
 from functools import partial
-from concurrent.futures import ThreadPoolExecutor
+from collections import deque
+from intermezzo import Intermezzo as mzo
 from impromptu.utils.multimethod import configure
 
 
@@ -63,6 +64,8 @@ class Question(object):
 
     def __init__(self, name, query, default="",
                  color=None, colormap=None):
+        self._threads = []
+        self._keys_in_use = []
         # set variables sent through initialization
         self.name = name
         self.query = query
@@ -87,10 +90,12 @@ class Question(object):
         self.config["query"] = (query, query_colormap)
         self.config["refresh"] = False
         self.config["result"] = (4, 0, 0)
-        self.lifecycle = {"mount": None, "unmount": None, "updates": []}
-        self.threadpool = ThreadPoolExecutor()
+        self.lifecycle = {}
+        self.lifecycle["mount"] = None
+        self.lifecycle["unmount"] = None
+        self.lifecycle["updates"] = {}
+        self.lifecycle["validations"] = {}
         self.evt_stream = deque(maxlen=20)
-        self.evt_mutex = -1
         self.end_signal = False
 
     def _partial(self, f):
@@ -105,6 +110,31 @@ class Question(object):
             except Exception as e:
                 return True
         return f
+
+    def _poll_event(self):
+        e = self.cli.poll_event()
+        self.evt_stream.append(e)
+
+    def _render(self):
+        x, y = 0, self.linenum
+        icon, query = self.config["icon"], self.config["query"]
+        prompt = f"{icon[0]} {query[0]}"
+        colormap = icon[1] + [(0, 0, 0)] + query[1]  # [(0,0,0)] for the nbsp;
+        for ch, colors in zip(prompt, colormap):
+            fg, attr, bg = colors
+            self.cli.set_cell(x, y, ch, fg | attr, bg)
+            x += 1
+        return None
+
+    def _redraw_all(self):
+        """Updates the render loop to account for any changes to the Widget"""
+        pass
+
+    def _clean_threads(self):
+        is_alive = [t for t in self._threads if t.is_alive()]
+        for t in is_alive:
+            t.join()
+        self._threads = []
 
     def mount(self):
         """Use to set up everything necessary for the Question.
@@ -129,17 +159,6 @@ class Question(object):
         if isinstance(f, partial) and callable(f.func):
             return f()
         return f
-
-    def _render(self):
-        x, y = 0, self.linenum
-        icon, query = self.config["icon"], self.config["query"]
-        prompt = f"{icon[0]} {query[0]}"
-        colormap = icon[1] + [(0, 0, 0)] + query[1]  # [(0,0,0)] for the nbsp;
-        for ch, colors in zip(prompt, colormap):
-            fg, attr, bg = colors
-            self.cli.set_cell(x, y, ch, fg | attr, bg)
-            x += 1
-        return None
 
     def unmount(self):
         """Use to perform clean up and logic jumps.
@@ -220,14 +239,6 @@ class Question(object):
         if callable(fn):
             self.lifecycle["unmount"] = partial(fn, *args, *kwargs)
 
-    def on_update(self, fn, *args, **kwargs):
-        if callable(fn):
-            self.lifecycle["updates"].append(partial(fn, *args, **kwargs))
-
-    def _redraw_all(self):
-        """Updates the render loop to account for any changes to the Widget"""
-        pass
-
     def clear_below(self):
         w, h = self.cli.size()
         for i in range(h):
@@ -235,26 +246,32 @@ class Question(object):
             for x in range(w):
                 self.cli.set_cell(x, y, " ", 0, 0)
 
-    async def _main(self):
+    def _main(self):
         """Execute the main processes for the field at hand.
 
         Each widget/field will be implemented differently
         """
-        # check minimum width and height
-        # w, h = self.cli.size()
-        # do the check here: TODO
-        # draw the query and prompt
-        self._render()
-        self._redraw_all()
         while True:
             if self.end_signal:
                 break
-            await asyncio.wait([
-                self._foreground(),
-                self._background()
-            ])
+            self._poll_event()
+            self._handle_events()
+            self._handle_updates()
+            self._handle_validations()
             self._redraw_all()
-        return None
+        self._clean_threads()
+
+    def _handle_updates(self):
+        e = self.pull_events()[0]
+        if e["Type"] == self.cli.event("Key"):
+            fn = self.lifecycle["updates"].get(e["Key"], None)
+            if fn:
+                t = threading.Thread(target=fn)
+                self._threads.append(t)
+                t.start()
+
+    def _handle_validations(self):
+        pass
 
     def pull_events(self, cache=5):
         """Handler that returns the last cached key events from the deque.
@@ -267,48 +284,35 @@ class Question(object):
         evts = self.evt_stream.copy()
         length = len(evts)
         if length == 0:
-            return [{"Type": "Blank"}]
+            return [{"Type": 7}]
         if length < cache:
-            evt_log = [evts.popleft() for _ in range(length)]
+            evt_log = [evts.pop() for _ in range(length)]
         elif length >= 20:
-            evt_log = [evts.popleft() for _ in range(20)]
+            evt_log = [evts.pop() for _ in range(20)]
         else:
-            evt_log = [evts.popleft() for _ in range(cache)]
+            evt_log = [evts.pop() for _ in range(cache)]
         return evt_log
 
-    def _update_processes(self):
-        updates = []
+    def _is_update_valid(self, key):
+        if key in self.lifecycle["updates"].keys():
+            return False
+        if key in self._keys_in_use:
+            return False
+        return True
 
-        def _wrap_async(fn):
-            """https://blog.konpat.me/python-turn-sync-functions-to-async/"""
-            future = self.threadpool.submit(fn)
-            return asyncio.wrap_future(future)
+    def update(self, k):
+        def wrapper(self, fn):
+            @wraps(fn)
+            def register(k):
+                if not self._is_update_valid(k):
+                    raise Exception("This update key is already in use.")
+                if mzo.key(k) is None:
+                    raise Exception("This update key is not valid or is unsupported.")
+                self.lifecycle["updates"][mzo.key(k)] = partial(fn, self)
+            register(k)
+        return partial(wrapper, self)
 
-        for fn in self.lifecycle["updates"]:
-            f = self._partial(fn)
-            try:
-                if isinstance(f, partial) and callable(f.func):
-                    updates.append(_wrap_async(f))
-            except Exception as err:
-                raise(Exception(err))
-        return updates
-
-    async def _foreground(self):
-        evt_loop = self.loop
-        if evt_loop is not None:
-            # TODO: consider making mzo.poll_event_nb
-            e = await evt_loop.run_in_executor(None, self.cli.poll_event)
-            self.evt_stream.appendleft(e)
-        await self._handle_events()
-        return None
-
-    async def _background(self):
-        update_processes = self._update_processes()
-        if not update_processes:
-            self.end_signal = True
-            return None
-        await asyncio.wait(update_processes)
-        return None
-
-    async def ask(self):
-        await self._main()
+    def ask(self):
+        self._render()
+        self._redraw_all()
+        self._main()

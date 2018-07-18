@@ -1,3 +1,7 @@
+import re
+import threading
+from functools import wraps
+from functools import partial
 from ._base import Question
 
 
@@ -109,6 +113,12 @@ class TextInput(BaseInput):
     def __init__(self, name, query, default="", width=120,
                  color=None, colormap=None):
         super().__init__(name, query, default, width, color, colormap)
+        self._keys_in_use = [
+            "Enter", "CtrlB", "ArrowLeft", "CtrlF",
+            "ArrowRight", "Backspace", "Backspace2",
+            "CtrlD", "Delete", "Tab", "Space", "CtrlK",
+            "Home", "CtrlA", "End", "CtrlE"
+        ]
         self.widget = "text"
         self.config["prompt"] = (" » ", [(0, 0, 0), (2, 0, 0), (0, 0, 0)])
         self.config["inputs"] = (0, 0, 0)
@@ -210,14 +220,14 @@ class TextInput(BaseInput):
         self._cursor_offset = 0
         self._cursor_unicode_offset = 0
 
-    async def _main(self):
-        await super()._main()
+    def _main(self):
+        super()._main()
         self.result = self._text
         return None
 
-    async def _handle_events(self):
+    def _handle_events(self):
         evt = self.pull_events()[0]
-        if evt["Type"] == self.cli.event("Key") and self.evt_mutex == -1:
+        if evt["Type"] == self.cli.event("Key"):
             k, c = evt["Key"], evt["Ch"]
             if k == self.cli.key("Enter"):
                 self.end_signal = True
@@ -263,7 +273,25 @@ class TextInput(BaseInput):
         elif evt["Type"] == self.cli.event("Error"):
             # EventError
             raise(Exception(evt["Err"]))
-        return None
+
+    def _handle_validations(self):
+        for condition, fn in self.lifecycle["validations"].items():
+            if not callable(condition):
+                condition = partial(re.match, condition, self._text)
+            else:
+                condition = partial(condition, self)
+            if condition():
+                t = threading.Thread(target=fn)
+                self._threads.append(t)
+                t.start()
+
+    def validate(self, condition):
+        def wrapper(self, fn):
+            @wraps(fn)
+            def register(condition):
+                self.lifecycle["validations"][condition] = partial(fn, self)
+            register(condition)
+        return partial(wrapper, self)
 
 
 class PasswordInput(TextInput):

@@ -1,4 +1,3 @@
-import asyncio
 from intermezzo import Intermezzo as mzo
 from impromptu.utils.registrar import Registrar
 
@@ -25,20 +24,19 @@ class Impromptu(object):
         """
         self.registrar.put(question)
 
-    async def prompt(self, cli, loop, registrar):
+    def prompt(self, cli, registrar):
         while True:
             # prepare query variables
             query = registrar.get()
             if query is None:
                 break
             query.cli = cli
-            query.loop = loop
-            query.registrar = registrar  # TODO: rename please
+            query.registrar = registrar
             # handle query lifecycle
             should_mount = query.mount()
             if should_mount is not False:
                 query.clear_below()
-                await query.ask()
+                query.ask()
                 did_unmount = query.unmount()
                 if did_unmount is False:
                     query.reset()
@@ -58,15 +56,10 @@ class Impromptu(object):
         mzo.set_input_mode(mzo.input("Esc"))
         mzo.set_output_mode(mzo.output("256"))
 
-        # start the event loop
-        evt_loop = asyncio.get_event_loop()
         try:
-            evt_loop.run_until_complete(self.prompt(
-                mzo, evt_loop, self.registrar
-            ))
+            self.prompt(mzo, self.registrar)
         finally:
             mzo.close()
-            evt_loop.close()
             for o in self.registrar.registry.values():
                 q = o["data"]
                 self.responses[q.name] = q.result
