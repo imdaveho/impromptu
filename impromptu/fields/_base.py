@@ -208,6 +208,7 @@ class Question(object):
 
     def reset(self):
         self.result = ""
+        self.end_signal = False
 
     def restart(self):
         self.registrar.cursor = self.registrar.running
