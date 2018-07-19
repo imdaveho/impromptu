@@ -31,11 +31,10 @@ class StaticMessage(Question):
         }.get(n, None)
 
     def setup(self, icon=False, prompt=False, message=False,
-              height=False, width=False, refresh=False):
+              width=False, refresh=False):
         kwargs = {
             "icon": icon,
             "prompt": prompt,
-            "height": height,
             "width": width,
             "message": message,
             "refresh": refresh,

@@ -95,6 +95,7 @@ class Question(object):
         self.lifecycle["unmount"] = None
         self.lifecycle["updates"] = {}
         self.lifecycle["validations"] = {}
+        self.evt_mutex = True
         self.evt_stream = deque(maxlen=20)
         self.end_signal = False
 
@@ -112,8 +113,9 @@ class Question(object):
         return f
 
     def _poll_event(self):
-        e = self.cli.poll_event()
-        self.evt_stream.append(e)
+        if self.evt_mutex:
+            e = self.cli.poll_event()
+            self.evt_stream.append(e)
 
     def _render(self):
         x, y = 0, self.linenum
