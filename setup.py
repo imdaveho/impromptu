@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="impromptu",
-    version="0.9.3",
+    version="0.9.4",
     description="Command-line based forms library. Supports multiple platforms. Has support for autocompletion, logic jumps, typeaheads, and more through an extensible interface.",
     long_description="",
     url="https://github.com/imdaveho/impromptu",
