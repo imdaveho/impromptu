@@ -203,7 +203,7 @@ class TextInput(BaseInput):
                 self.cli.set_cell(x, y, " ", 0, 0)
         return None
 
-    def _redraw_all(self):
+    def redraw_all(self):
         self._clear_widget()
         self._draw_prompt()
         self._draw_widget()
@@ -277,10 +277,11 @@ class TextInput(BaseInput):
     def _handle_validations(self):
         for condition, fn in self.lifecycle["validations"].items():
             if not callable(condition):
-                condition = partial(re.match, condition, self._text)
+                condition = partial(re.search, condition, self._text)
             else:
                 condition = partial(condition, self)
-            if condition():
+            running_threads = [t.is_alive() for t in self._threads]
+            if condition() and not any(running_threads):
                 t = threading.Thread(target=fn)
                 self._threads.append(t)
                 t.start()

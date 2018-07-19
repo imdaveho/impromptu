@@ -124,11 +124,6 @@ class Question(object):
             fg, attr, bg = colors
             self.cli.set_cell(x, y, ch, fg | attr, bg)
             x += 1
-        return None
-
-    def _redraw_all(self):
-        """Updates the render loop to account for any changes to the Widget"""
-        pass
 
     def _clean_threads(self):
         is_alive = [t for t in self._threads if t.is_alive()]
@@ -207,6 +202,10 @@ class Question(object):
                     for x in range(w):
                         self.cli.set_cell(x, y, " ", 0, 0)
 
+    def redraw_all(self):
+        """Updates the render loop to account for any changes to the Widget"""
+        pass
+
     def reset(self):
         self.result = ""
 
@@ -245,6 +244,7 @@ class Question(object):
             y = i + self.linenum + 1
             for x in range(w):
                 self.cli.set_cell(x, y, " ", 0, 0)
+        self.cli.flush()
 
     def _main(self):
         """Execute the main processes for the field at hand.
@@ -254,11 +254,11 @@ class Question(object):
         while True:
             if self.end_signal:
                 break
+            self._handle_validations()
             self._poll_event()
             self._handle_events()
             self._handle_updates()
-            self._handle_validations()
-            self._redraw_all()
+            self.redraw_all()
         self._clean_threads()
 
     def _handle_updates(self):
@@ -307,12 +307,13 @@ class Question(object):
                 if not self._is_update_valid(k):
                     raise Exception("This update key is already in use.")
                 if mzo.key(k) is None:
-                    raise Exception("This update key is not valid or is unsupported.")
+                    raise Exception("This update key is not valid " +
+                                    "or is unsupported.")
                 self.lifecycle["updates"][mzo.key(k)] = partial(fn, self)
             register(k)
         return partial(wrapper, self)
 
     def ask(self):
         self._render()
-        self._redraw_all()
+        self.redraw_all()
         self._main()

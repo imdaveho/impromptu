@@ -70,7 +70,7 @@ class StaticMessage(Question):
                 dx += 1
         return None
 
-    def _redraw_all(self):
+    def redraw_all(self):
         self.cli.hide_cursor()
         self._draw_prompt()
         self._draw_message()
@@ -78,7 +78,7 @@ class StaticMessage(Question):
 
     def _handle_events(self):
         evt = self.pull_events()[0]
-        if evt["Type"] == self.cli.event("Key") and self.evt_mutex == -1:
+        if evt["Type"] == self.cli.event("Key"):
             k = evt["Key"]
             if k == self.cli.key("Enter"):
                 self.end_signal = True

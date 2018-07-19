@@ -104,7 +104,7 @@ class ChoiceSelect(Question):
                 self.cli.set_cell(x, y, " ", 0, 0)
         return None
 
-    def _redraw_all(self):
+    def redraw_all(self):
         self._clear_widget()
         self._draw_widget()
         self.cli.hide_cursor()
