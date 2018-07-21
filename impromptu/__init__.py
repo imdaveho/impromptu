@@ -43,6 +43,8 @@ class Impromptu(object):
                     query.restart()
                 else:
                     query.close()
+            else:
+                query.close()
 
     def start(self):
         """

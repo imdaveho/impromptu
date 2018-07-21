@@ -113,19 +113,8 @@ class Question(object):
         return f
 
     def _poll_event(self):
-        if self.evt_mutex:
-            e = self.cli.poll_event()
-            self.evt_stream.append(e)
-
-    def _render(self):
-        x, y = 0, self.linenum
-        icon, query = self.config["icon"], self.config["query"]
-        prompt = f"{icon[0]} {query[0]}"
-        colormap = icon[1] + [(0, 0, 0)] + query[1]  # [(0,0,0)] for the nbsp;
-        for ch, colors in zip(prompt, colormap):
-            fg, attr, bg = colors
-            self.cli.set_cell(x, y, ch, fg | attr, bg)
-            x += 1
+        e = self.cli.poll_event()
+        self.evt_stream.append(e)
 
     def _clean_threads(self):
         is_alive = [t for t in self._threads if t.is_alive()]
@@ -204,6 +193,16 @@ class Question(object):
                     for x in range(w):
                         self.cli.set_cell(x, y, " ", 0, 0)
 
+    def render(self):
+        x, y = 0, self.linenum
+        icon, query = self.config["icon"], self.config["query"]
+        prompt = f"{icon[0]} {query[0]}"
+        colormap = icon[1] + [(0, 0, 0)] + query[1]  # [(0,0,0)] for the nbsp;
+        for ch, colors in zip(prompt, colormap):
+            fg, attr, bg = colors
+            self.cli.set_cell(x, y, ch, fg | attr, bg)
+            x += 1
+
     def redraw_all(self):
         """Updates the render loop to account for any changes to the Widget"""
         pass
@@ -257,11 +256,12 @@ class Question(object):
         while True:
             if self.end_signal:
                 break
-            self._handle_validations()
-            self._poll_event()
-            self._handle_events()
-            self._handle_updates()
-            self.redraw_all()
+            if self.evt_mutex:
+                self._handle_validations()
+                self._poll_event()
+                self._handle_events()
+                self._handle_updates()
+                self.redraw_all()
         self._clean_threads()
 
     def _handle_updates(self):
@@ -317,6 +317,6 @@ class Question(object):
         return partial(wrapper, self)
 
     def ask(self):
-        self._render()
+        self.render()
         self.redraw_all()
         self._main()
